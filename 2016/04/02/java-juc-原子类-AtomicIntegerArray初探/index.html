@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" >
+  <title>java-juc-原子类-AtomicIntegerArray初探 | cruise yang</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="上一篇文章我们已经大致了解了AtomicInteger的实现机制以及在jdk 1.8上的新特点，现在我们趁热打铁来看看AtomicIntegerArray类。  
+同样的，我们先看看AtomicIntegerArray的简单用法：  
+12345678910111213int[] intArray = new int[]&amp;#123;1, 2, 3, 4, 5&amp;#125;;AtomicInteger">
+<meta property="og:type" content="article">
+<meta property="og:title" content="java-juc-原子类-AtomicIntegerArray初探">
+<meta property="og:url" content="http://yoursite.com/2016/04/02/java-juc-原子类-AtomicIntegerArray初探/index.html">
+<meta property="og:site_name" content="cruise yang">
+<meta property="og:description" content="上一篇文章我们已经大致了解了AtomicInteger的实现机制以及在jdk 1.8上的新特点，现在我们趁热打铁来看看AtomicIntegerArray类。  
+同样的，我们先看看AtomicIntegerArray的简单用法：  
+12345678910111213int[] intArray = new int[]&amp;#123;1, 2, 3, 4, 5&amp;#125;;AtomicInteger">
+<meta property="og:updated_time" content="2016-04-03T05:34:27.635Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="java-juc-原子类-AtomicIntegerArray初探">
+<meta name="twitter:description" content="上一篇文章我们已经大致了解了AtomicInteger的实现机制以及在jdk 1.8上的新特点，现在我们趁热打铁来看看AtomicIntegerArray类。  
+同样的，我们先看看AtomicIntegerArray的简单用法：  
+12345678910111213int[] intArray = new int[]&amp;#123;1, 2, 3, 4, 5&amp;#125;;AtomicInteger">
+  
+    <link rel="alternative" href="/atom.xml" title="cruise yang" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div class="left-col">
+    <div class="overlay"></div>
+<div class="intrude-less">
+	<header id="header" class="inner">
+		<a href="/" class="profilepic">
+			
+			<img lazy-src="https://raw.githubusercontent.com/cruise1008/cruise1008.github.io/master/img/avatar.jpg" class="js-avatar">
+			
+		</a>
+
+		<hgroup>
+		  <h1 class="header-author"><a href="/">Cruise Yang</a></h1>
+		</hgroup>
+
+		
+		<p class="header-subtitle">纸上得来终觉浅，绝知此事要躬行</p>
+		
+
+		
+			<div class="switch-btn">
+				<div class="icon">
+					<div class="icon-ctn">
+						<div class="icon-wrap icon-house" data-idx="0">
+							<div class="birdhouse"></div>
+							<div class="birdhouse_holes"></div>
+						</div>
+						<div class="icon-wrap icon-ribbon hide" data-idx="1">
+							<div class="ribbon"></div>
+						</div>
+						
+						
+						<div class="icon-wrap icon-me hide" data-idx="3">
+							<div class="user"></div>
+							<div class="shoulder"></div>
+						</div>
+						
+					</div>
+					
+				</div>
+				<div class="tips-box hide">
+					<div class="tips-arrow"></div>
+					<ul class="tips-inner">
+						<li>Menu</li>
+						<li>Tags</li>
+						
+						
+						<li>About</li>
+						
+					</ul>
+				</div>
+			</div>
+		
+
+		<div class="switch-area">
+			<div class="switch-wrap">
+				<section class="switch-part switch-part1">
+					<nav class="header-menu">
+						<ul>
+						
+							<li><a href="/">主页</a></li>
+				        
+							<li><a href="/archives">文章</a></li>
+				        
+							<li><a href="/tags/thoughts">随笔</a></li>
+				        
+							<li><a href="/about">关于</a></li>
+				        
+						</ul>
+					</nav>
+					<nav class="header-nav">
+						<div class="social">
+							
+								<a class="github" target="_blank" href="https://github.com/cruise1008" title="github">github</a>
+					        
+								<a class="weibo" target="_blank" href="http://weibo.com/cruise" title="weibo">weibo</a>
+					        
+								<a class="zhihu" target="_blank" href="https://www.zhihu.com/people/cruiseyoung" title="zhihu">zhihu</a>
+					        
+								<a class="douban" target="_blank" href="https://www.douban.com/people/cruiseyoung/" title="douban">douban</a>
+					        
+						</div>
+					</nav>
+				</section>
+				
+				
+				<section class="switch-part switch-part2">
+					<div class="widget tagcloud" id="js-tagcloud">
+						<a href="/tags/android/" style="font-size: 16.67px;">android</a> <a href="/tags/java/" style="font-size: 13.33px;">java</a> <a href="/tags/java-juc/" style="font-size: 20px;">java juc</a> <a href="/tags/thoughts/" style="font-size: 10px;">thoughts</a> <a href="/tags/view源码/" style="font-size: 10px;">view源码</a>
+					</div>
+				</section>
+				
+				
+				
+
+				
+				
+				<section class="switch-part switch-part3">
+				
+					<div id="js-aboutme">程序猿/足球狗/文艺工科男</div>
+				</section>
+				
+			</div>
+		</div>
+	</header>				
+</div>
+
+    </div>
+    <div class="mid-col">
+      <nav id="mobile-nav">
+  	<div class="overlay">
+  		<div class="slider-trigger"></div>
+  		<h1 class="header-author js-mobile-header hide">Cruise Yang</h1>
+  	</div>
+	<div class="intrude-less">
+		<header id="header" class="inner">
+			<div class="profilepic">
+			
+				<img lazy-src="https://raw.githubusercontent.com/cruise1008/cruise1008.github.io/master/img/avatar.jpg" class="js-avatar">
+			
+			</div>
+			<hgroup>
+			  <h1 class="header-author">Cruise Yang</h1>
+			</hgroup>
+			
+			<p class="header-subtitle">纸上得来终觉浅，绝知此事要躬行</p>
+			
+			<nav class="header-menu">
+				<ul>
+				
+					<li><a href="/">主页</a></li>
+		        
+					<li><a href="/archives">文章</a></li>
+		        
+					<li><a href="/tags/thoughts">随笔</a></li>
+		        
+					<li><a href="/about">关于</a></li>
+		        
+		        <div class="clearfix"></div>
+				</ul>
+			</nav>
+			<nav class="header-nav">
+				<div class="social">
+					
+						<a class="github" target="_blank" href="https://github.com/cruise1008" title="github">github</a>
+			        
+						<a class="weibo" target="_blank" href="http://weibo.com/cruise" title="weibo">weibo</a>
+			        
+						<a class="zhihu" target="_blank" href="https://www.zhihu.com/people/cruiseyoung" title="zhihu">zhihu</a>
+			        
+						<a class="douban" target="_blank" href="https://www.douban.com/people/cruiseyoung/" title="douban">douban</a>
+			        
+				</div>
+			</nav>
+		</header>				
+	</div>
+</nav>
+
+      <div class="body-wrap"><article id="post-java-juc-原子类-AtomicIntegerArray初探" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a href="/2016/04/02/java-juc-原子类-AtomicIntegerArray初探/" class="article-date">
+  	<time datetime="2016-04-02T01:44:26.000Z" itemprop="datePublished">2016-04-02</time>
+</a>
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      java-juc-原子类-AtomicIntegerArray初探
+    </h1>
+  
+
+      </header>
+      
+      <div class="article-info article-info-post">
+        
+	<div class="article-tag tagcloud">
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java-juc/">java juc</a></li></ul>
+	</div>
+
+        
+
+        <div class="clearfix"></div>
+      </div>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+      <p>上一篇文章我们已经大致了解了AtomicInteger的实现机制以及在jdk 1.8上的新特点，现在我们趁热打铁来看看AtomicIntegerArray类。  </p>
+<p>同样的，我们先看看AtomicIntegerArray的简单用法：  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span>[] intArray = <span class="keyword">new</span> <span class="keyword">int</span>[]&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>&#125;;</span><br><span class="line">AtomicIntegerArray aia = <span class="keyword">new</span> AtomicIntegerArray(intArray);</span><br><span class="line">aia.set(<span class="number">0</span>, <span class="number">5</span>);</span><br><span class="line">aia.getAndDecrement(<span class="number">0</span>); <span class="comment">// 5</span></span><br><span class="line">aia.decrementAndGet(<span class="number">1</span>); <span class="comment">// 1</span></span><br><span class="line">aia.getAndIncrement(<span class="number">2</span>); <span class="comment">// 3</span></span><br><span class="line">aia.incrementAndGet(<span class="number">3</span>); <span class="comment">// 5</span></span><br><span class="line">aia.addAndGet(<span class="number">0</span>, <span class="number">10</span>); <span class="comment">// 14</span></span><br><span class="line">aia.getAndAdd(<span class="number">1</span>, <span class="number">10</span>); <span class="comment">// 1</span></span><br><span class="line">aia.compareAndSet(<span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>); <span class="comment">// false</span></span><br><span class="line">aia.get(<span class="number">2</span>); <span class="comment">// 4</span></span><br><span class="line">aia.compareAndSet(<span class="number">2</span>, <span class="number">4</span>, <span class="number">10</span>); <span class="comment">// true</span></span><br><span class="line">aia.get(<span class="number">2</span>); <span class="comment">// 10</span></span><br></pre></td></tr></table></figure>
+<p>用法同样非常简单，操作的数据类型类似int[]， 只不过封装好套了一层atomin操作。经过上一篇AtomicInteger的介绍，上面的各个基本的方法使用的结果相信应该不会有什么问题，<br>并且实际上都是可以根据方法名“顾名思义”的。  </p>
+<p>同样的，我们看看源码， 基于jdk 1.8.0_05 。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">int</span>[] array;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">AtomicIntegerArray</span><span class="params">(<span class="keyword">int</span> length)</span> </span>&#123;</span><br><span class="line">    array = <span class="keyword">new</span> <span class="keyword">int</span>[length];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">AtomicIntegerArray</span><span class="params">(<span class="keyword">int</span>[] array)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">this</span>.array = array.clone();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里的构造方法也很简单，一种是传入数组的长度，默认创建一个length长度的各个元素为0的数组，一种是直接在外面创建好一个数组，然后传给构造方法。  </p>
+<p>这里保存数组的值是全局维护了一个int[] array. 有没有发现这里和AtomicInteger的不同？AtomicInteger保存值是维护了一个volatile来保证可见性，这里为什么没有采取同样的方法？  </p>
+<p>仔细看看一下，<strong>array使用的是final修饰，变成了常量数组，引用不可变，这个array数组就保存到了方法区，同样的可以保证多线程访问时的可见性</strong>，避免使用volatile也减少了开销。  </p>
+<p>类似AtomicInteger，AtomicIntegerArray也是采用了Unsafe特殊类来提供CAS函数进行原子性的操作，这块暂且按下不表，我们看看AtomicIntegerArray的内部实现中相比AtomicInteger多了一些有意思的存在，<br>一个是base, 一个是shift。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Unsafe unsafe = Unsafe.getUnsafe();</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> base = unsafe.arrayBaseOffset(<span class="keyword">int</span>[].class);</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> shift;</span><br><span class="line"></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="keyword">int</span> scale = unsafe.arrayIndexScale(<span class="keyword">int</span>[].class);</span><br><span class="line">    <span class="keyword">if</span> ((scale &amp; (scale - <span class="number">1</span>)) != <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> Error(<span class="string">"data type scale not a power of two"</span>);</span><br><span class="line">    shift = <span class="number">31</span> - Integer.numberOfLeadingZeros(scale);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Unsafe.class</span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">native</span> <span class="keyword">int</span> <span class="title">arrayBaseOffset</span><span class="params">(Class&lt;?&gt; var1)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">native</span> <span class="keyword">int</span> <span class="title">arrayIndexScale</span><span class="params">(Class&lt;?&gt; var1)</span></span>;</span><br></pre></td></tr></table></figure>
+<p>arrayBaseOffset方法一般是配合arrayIndexScale方法使用，两个都是属于Unsafe类中的native方法。这两个native方法需要传入的参数都是一个array类型的class。arrayBaseOffset是能获取数组首个元素的首地址偏移，arrayIndexScale可以用来获取数组元素的增量地址的方法。上面那段代码和内容可能有点不太好理解，我们先形成这个印象，接下来可以先看一个小例子。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> base = unsafe.arrayBaseOffset(<span class="keyword">int</span>[].class);</span><br><span class="line"><span class="keyword">int</span> scale = unsafe.arrayIndexScale(<span class="keyword">int</span>[].class);</span><br><span class="line"><span class="keyword">int</span> elementIdx = <span class="number">3</span>;</span><br><span class="line"><span class="keyword">int</span>[] array = &#123; <span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span> ，<span class="number">3</span>, <span class="number">4</span> &#125;;</span><br><span class="line"><span class="keyword">long</span> offsetForIdx = base + (elementIdx * scale);</span><br></pre></td></tr></table></figure>
+<p>我们用来计算offsetForIdx的过程，就是先计算基址加上一个偏移的增量。其中偏移的增量又是根据偏移的索引和元素增量地址的乘积获得。  </p>
+<p>如果还不清楚，我们更深入一点来研究这两个native方法: -)。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">arrayBaseOffset</span><span class="params">(Class clazz)</span> </span>&#123;</span><br><span class="line">	Class&lt;?&gt; component = clazz.getComponentType();</span><br><span class="line">	<span class="keyword">if</span> (component == <span class="keyword">null</span>) &#123;</span><br><span class="line">		<span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(<span class="string">"Valid for array classes only: "</span> + clazz);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="comment">// <span class="doctag">TODO:</span> make the following not specific to the object model.</span></span><br><span class="line">	<span class="keyword">int</span> offset = <span class="number">12</span>;</span><br><span class="line">	<span class="keyword">if</span> (component == <span class="keyword">long</span>.class || component == <span class="keyword">double</span>.class) &#123;</span><br><span class="line">		offset += <span class="number">4</span>;  <span class="comment">// 4 bytes of padding.</span></span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> offset;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">arrayIndexScale</span><span class="params">(Class clazz)</span> </span>&#123;</span><br><span class="line">	Class&lt;?&gt; component = clazz.getComponentType();</span><br><span class="line">	<span class="keyword">if</span> (component == <span class="keyword">null</span>) &#123;</span><br><span class="line">		<span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(<span class="string">"Valid for array classes only: "</span> + clazz);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="comment">// <span class="doctag">TODO:</span> make the following not specific to the object model.</span></span><br><span class="line">	<span class="keyword">if</span> (!component.isPrimitive()) &#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="number">4</span>;</span><br><span class="line">	&#125; <span class="keyword">else</span>  <span class="keyword">if</span> (component == <span class="keyword">long</span>.class || component == <span class="keyword">double</span>.class) &#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="number">8</span>;</span><br><span class="line">	&#125; <span class="keyword">else</span> <span class="keyword">if</span> (component == <span class="keyword">int</span>.class || component == <span class="keyword">float</span>.class) &#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="number">4</span>;</span><br><span class="line">	&#125; <span class="keyword">else</span> <span class="keyword">if</span> (component == <span class="keyword">char</span>.class || component == <span class="keyword">short</span>.class) &#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="number">2</span>;</span><br><span class="line">	&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">		<span class="comment">// component == byte.class || component == boolean.class.</span></span><br><span class="line">		<span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面一段是我抠的一段源码，可以看到，<strong>arrayBaseOffset实质上做的是获取一个数组对象在内存中从数组的地址到首个元素的地址的偏移量</strong>。为什么offset会先加12呢，这里涉及到的是java内存中对象存储的知识。<br>我们要知道，每个类对象在内存中存储时除了数据内容，其实还要包含一个头部信息的，主要是8字节大小的元信息，存储一些标识符号等信息，如果这个类是数组类型的话，还需要4字节来存储数组的大小，所以<br>这里是12字节。接下来又涉及到了字节对齐，我们知道在jvm中，是要以8字节为单位进行对齐的，这里的头部12字节肯定是无法对齐了，但是如果是long，double等8字节的类型，就是在开始存时就进行对齐操作，<br>这样就能保证接下来的每一个元素都是8的倍数，而如果是其他的对象比如int 4字节，就在数组末尾进行对齐，这样就能缺多少补多少。  </p>
+<p>而<strong>arrayIndexScale实际上是能获取数组中每个元素在内存中的大小</strong>，是不是有点像cpp里sizeof的感觉了？   </p>
+<p>分析到这里我们应该对AtomicIntegerArray的base和scale有了一个清晰的认识了，但是我们会发现，在最初我们贴出的那段static代码块中，将scale转为了一个final int值shift。  </p>
+<p>首先通过scale &amp; (scale-1) !=0 进行一下检查，事实上n &amp; (n-1) ==0 就说明n要么是0，要么是2的幂次方，这里的这个检查处理结合上面贴出的arrayIndexScale中对基本类型的处理就非常好理解了。  </p>
+<p>接着用到了Integer.numberOfLeadingZeros(scale)方法，这个方法能够获取scale中高位的0的个数，因为一个int是以32位二进制存储的，当高位没有时，都会补0。所以shift就是第一个不为0的index，这里非常重要，<br>也就是说，shift可以理解为scale的2幂次方的这个幂。例如scale为16，那么shift就是4， scale为8，shift就是3。好了，关于AtomicIntegerArray的初始化构建到这儿就有一个了解了。但是知道这个有什么用呢？我们接下来会慢慢用到。  </p>
+<p>我们再来看两个重要的基础方法。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">long</span> <span class="title">checkedByteOffset</span><span class="params">(<span class="keyword">int</span> i)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">if</span> (i &lt; <span class="number">0</span> || i &gt;= array.length)</span><br><span class="line">		<span class="keyword">throw</span> <span class="keyword">new</span> IndexOutOfBoundsException(<span class="string">"index "</span> + i);</span><br><span class="line"></span><br><span class="line">		<span class="keyword">return</span> byteOffset(i);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">long</span> <span class="title">byteOffset</span><span class="params">(<span class="keyword">int</span> i)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">return</span> ((<span class="keyword">long</span>) i &lt;&lt; shift) + base;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>checkedByteOffset接到的参数就是array中的index，检查一下没有数组下标越界后实际上做的事到了byteOffset。<strong>i &lt;&lt; shift其实就是i * scale</strong>。这也符合我们开始时解释arrayBaseOffset时举的例子。  </p>
+<p>本质上还是计算了CAS中需要的那个内存中的旧值。所以这里的转化就非常巧妙，可以再多回味一下。  </p>
+<p>好了，基础工作我们基本分析完了，现在像学习AtomicInteger一样来学习一下存取方法吧。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">int</span> <span class="title">getAndAdd</span><span class="params">(<span class="keyword">int</span> i, <span class="keyword">int</span> delta)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">return</span> unsafe.getAndAddInt(array, checkedByteOffset(i), delta);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">int</span> <span class="title">addAndGet</span><span class="params">(<span class="keyword">int</span> i, <span class="keyword">int</span> delta)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">return</span> getAndAdd(i, delta) + delta;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这两个核心方法的思想和实质几乎和AtomicInteger一模一样，除了修改值时需要传入一个数组的index，最后都是进了Unsafe类中去getAndAddInt，然后走compareAndSwapInt方法，到这里的过程就和AtomicInteger一模一样了。  </p>
+<p>同样的，在jdk 1.8中加入了单值运算操作。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">int</span> <span class="title">getAndUpdate</span><span class="params">(<span class="keyword">int</span> i, IntUnaryOperator updateFunction)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">long</span> offset = checkedByteOffset(i);</span><br><span class="line">	<span class="keyword">int</span> prev, next;</span><br><span class="line">	do &#123;</span><br><span class="line">		prev = getRaw(offset);</span><br><span class="line">		next = updateFunction.applyAsInt(prev);</span><br><span class="line">	&#125; <span class="keyword">while</span> (!compareAndSetRaw(offset, prev, next));</span><br><span class="line">	<span class="keyword">return</span> prev;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">int</span> <span class="title">updateAndGet</span><span class="params">(<span class="keyword">int</span> i, IntUnaryOperator updateFunction)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">long</span> offset = checkedByteOffset(i);</span><br><span class="line">	<span class="keyword">int</span> prev, next;</span><br><span class="line">	do &#123;</span><br><span class="line">		prev = getRaw(offset);</span><br><span class="line">		next = updateFunction.applyAsInt(prev);</span><br><span class="line">	&#125; <span class="keyword">while</span> (!compareAndSetRaw(offset, prev, next));</span><br><span class="line">	<span class="keyword">return</span> next;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>用法和AtomicInteger差不多，多传入一个index.  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span>[] intArray = <span class="keyword">new</span> <span class="keyword">int</span>[]&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>&#125;;</span><br><span class="line">AtomicIntegerArray aia = <span class="keyword">new</span> AtomicIntegerArray(intArray);</span><br><span class="line">aia.updateAndGet(<span class="number">1</span>, n -&gt; (n % <span class="number">2</span> == <span class="number">0</span> ? n - <span class="number">2</span> : n - <span class="number">1</span>));</span><br></pre></td></tr></table></figure>
+<p>那么aia变成了[1, 0,3,4,5]。  </p>
+<p>除了直接更新值操作，也和AtomicInteger一样新增提供了getAndAccumulate和accumulateAndGet方法，都可以传入一个IntBinaryOperator进行java 8特性的编写。这也是非常方便的了。  </p>
+<p>ok，关于AtomicIntegerArray的探究就到这儿吧，AtomicLongArray等原子数组类型和这个就差不多了，只是数据类型对象更换一下，具体的机制是想通的，大家有兴趣可以自己再看看相关的源码。  </p>
+
+      
+    </div>
+    
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2016/04/03/java-juc-原子类-AtomicReference初探/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption"><</strong>
+      <div class="article-nav-title">
+        
+          java-juc-原子类-AtomicReference和AtomicIntegerFieldUpdater初探
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/04/01/java-juc-原子类-AtomicInteger初探/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">java-juc-原子类-AtomicInteger初探</div>
+      <strong class="article-nav-caption">></strong>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+<div class="share_jia">
+	<!-- JiaThis Button BEGIN -->
+	<div class="jiathis_style">
+		<span class="jiathis_txt">Share to: &nbsp; </span>
+		<a class="jiathis_button_facebook"></a> 
+    <a class="jiathis_button_twitter"></a>
+    <a class="jiathis_button_plus"></a> 
+    <a class="jiathis_button_tsina"></a>
+		<a class="jiathis_button_cqq"></a>
+		<a class="jiathis_button_douban"></a>
+		<a class="jiathis_button_weixin"></a>
+		<a class="jiathis_button_tumblr"></a>
+    <a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>
+	</div>
+	<script type="text/javascript" src="http://v3.jiathis.com/code/jia.js?uid=1405949716054953" charset="utf-8"></script>
+	<!-- JiaThis Button END -->
+</div>
+
+
+
+
+
+
+<div class="duoshuo">
+	<!-- 多说评论框 start -->
+	<div class="ds-thread" data-thread-key="java-juc-原子类-AtomicIntegerArray初探" data-title="java-juc-原子类-AtomicIntegerArray初探" data-url="http://yoursite.com/2016/04/02/java-juc-原子类-AtomicIntegerArray初探/"></div>
+	<!-- 多说评论框 end -->
+	<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+	<script type="text/javascript">
+	var duoshuoQuery = {short_name:"cruiseyang"};
+	(function() {
+		var ds = document.createElement('script');
+		ds.type = 'text/javascript';ds.async = true;
+		ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+		ds.charset = 'UTF-8';
+		(document.getElementsByTagName('head')[0] 
+		 || document.getElementsByTagName('body')[0]).appendChild(ds);
+	})();
+	</script>
+	<!-- 多说公共JS代码 end -->
+</div>
+
+
+
+
+</div>
+      <footer id="footer">
+  <div class="outer">
+    <div id="footer-info">
+    	<div class="footer-left">
+    		&copy; 2016 Cruise Yang
+    	</div>
+      	<div class="footer-right">
+      		<a href="http://hexo.io/" target="_blank">Hexo</a>  Theme <a href="https://github.com/litten/hexo-theme-yilia" target="_blank">Yilia</a> by Litten
+      	</div>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+
+<script>
+	var yiliaConfig = {
+		fancybox: true,
+		mathjax: true,
+		animate: true,
+		isHome: false,
+		isPost: true,
+		isArchive: false,
+		isTag: false,
+		isCategory: false,
+		open_in_new: false
+	}
+</script>
+<script src="http://7.url.cn/edu/jslib/comb/require-2.1.6,jquery-1.9.1.min.js"></script>
+<script src="/js/main.js"></script>
+
+
+
+
+
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+    tex2jax: {
+        inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+        processEscapes: true,
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+    }
+});
+
+MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+        all[i].SourceElement().parentNode.className += ' has-jax';                 
+    }       
+});
+</script>
+
+<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+  </div>
+</body>
+</html>

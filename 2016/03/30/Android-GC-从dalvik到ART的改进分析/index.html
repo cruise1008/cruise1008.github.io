@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" >
+  <title>Android GC 从dalvik到ART的改进分析 | cruise yang</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="自从android4.4开始加入ART虚拟机，从5.0开始完全用ART代替Dalvik虚拟机，ART的优点越来越被开发者和用户接受。很多用户会觉得android从5.0开始很流畅，很少卡顿，其实从GC角度看，是因为系统GC的过程得到了优化，GC过程中的几次暂停时间缩短了。接下来我主要从dalvik和ART二者的GC的改进的地方来分析一下，为什么ART的使用会使android系统性能和流畅有着如此之">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Android GC 从dalvik到ART的改进分析">
+<meta property="og:url" content="http://yoursite.com/2016/03/30/Android-GC-从dalvik到ART的改进分析/index.html">
+<meta property="og:site_name" content="cruise yang">
+<meta property="og:description" content="自从android4.4开始加入ART虚拟机，从5.0开始完全用ART代替Dalvik虚拟机，ART的优点越来越被开发者和用户接受。很多用户会觉得android从5.0开始很流畅，很少卡顿，其实从GC角度看，是因为系统GC的过程得到了优化，GC过程中的几次暂停时间缩短了。接下来我主要从dalvik和ART二者的GC的改进的地方来分析一下，为什么ART的使用会使android系统性能和流畅有着如此之">
+<meta property="og:updated_time" content="2016-04-02T01:20:14.294Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Android GC 从dalvik到ART的改进分析">
+<meta name="twitter:description" content="自从android4.4开始加入ART虚拟机，从5.0开始完全用ART代替Dalvik虚拟机，ART的优点越来越被开发者和用户接受。很多用户会觉得android从5.0开始很流畅，很少卡顿，其实从GC角度看，是因为系统GC的过程得到了优化，GC过程中的几次暂停时间缩短了。接下来我主要从dalvik和ART二者的GC的改进的地方来分析一下，为什么ART的使用会使android系统性能和流畅有着如此之">
+  
+    <link rel="alternative" href="/atom.xml" title="cruise yang" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div class="left-col">
+    <div class="overlay"></div>
+<div class="intrude-less">
+	<header id="header" class="inner">
+		<a href="/" class="profilepic">
+			
+			<img lazy-src="https://raw.githubusercontent.com/cruise1008/cruise1008.github.io/master/img/avatar.jpg" class="js-avatar">
+			
+		</a>
+
+		<hgroup>
+		  <h1 class="header-author"><a href="/">Cruise Yang</a></h1>
+		</hgroup>
+
+		
+		<p class="header-subtitle">纸上得来终觉浅，绝知此事要躬行</p>
+		
+
+		
+			<div class="switch-btn">
+				<div class="icon">
+					<div class="icon-ctn">
+						<div class="icon-wrap icon-house" data-idx="0">
+							<div class="birdhouse"></div>
+							<div class="birdhouse_holes"></div>
+						</div>
+						<div class="icon-wrap icon-ribbon hide" data-idx="1">
+							<div class="ribbon"></div>
+						</div>
+						
+						
+						<div class="icon-wrap icon-me hide" data-idx="3">
+							<div class="user"></div>
+							<div class="shoulder"></div>
+						</div>
+						
+					</div>
+					
+				</div>
+				<div class="tips-box hide">
+					<div class="tips-arrow"></div>
+					<ul class="tips-inner">
+						<li>Menu</li>
+						<li>Tags</li>
+						
+						
+						<li>About</li>
+						
+					</ul>
+				</div>
+			</div>
+		
+
+		<div class="switch-area">
+			<div class="switch-wrap">
+				<section class="switch-part switch-part1">
+					<nav class="header-menu">
+						<ul>
+						
+							<li><a href="/">主页</a></li>
+				        
+							<li><a href="/archives">文章</a></li>
+				        
+							<li><a href="/tags/thoughts">随笔</a></li>
+				        
+							<li><a href="/about">关于</a></li>
+				        
+						</ul>
+					</nav>
+					<nav class="header-nav">
+						<div class="social">
+							
+								<a class="github" target="_blank" href="https://github.com/cruise1008" title="github">github</a>
+					        
+								<a class="weibo" target="_blank" href="http://weibo.com/cruise" title="weibo">weibo</a>
+					        
+								<a class="zhihu" target="_blank" href="https://www.zhihu.com/people/cruiseyoung" title="zhihu">zhihu</a>
+					        
+								<a class="douban" target="_blank" href="https://www.douban.com/people/cruiseyoung/" title="douban">douban</a>
+					        
+						</div>
+					</nav>
+				</section>
+				
+				
+				<section class="switch-part switch-part2">
+					<div class="widget tagcloud" id="js-tagcloud">
+						<a href="/tags/android/" style="font-size: 16.67px;">android</a> <a href="/tags/java/" style="font-size: 13.33px;">java</a> <a href="/tags/java-juc/" style="font-size: 20px;">java juc</a> <a href="/tags/thoughts/" style="font-size: 10px;">thoughts</a> <a href="/tags/view源码/" style="font-size: 10px;">view源码</a>
+					</div>
+				</section>
+				
+				
+				
+
+				
+				
+				<section class="switch-part switch-part3">
+				
+					<div id="js-aboutme">程序猿/足球狗/文艺工科男</div>
+				</section>
+				
+			</div>
+		</div>
+	</header>				
+</div>
+
+    </div>
+    <div class="mid-col">
+      <nav id="mobile-nav">
+  	<div class="overlay">
+  		<div class="slider-trigger"></div>
+  		<h1 class="header-author js-mobile-header hide">Cruise Yang</h1>
+  	</div>
+	<div class="intrude-less">
+		<header id="header" class="inner">
+			<div class="profilepic">
+			
+				<img lazy-src="https://raw.githubusercontent.com/cruise1008/cruise1008.github.io/master/img/avatar.jpg" class="js-avatar">
+			
+			</div>
+			<hgroup>
+			  <h1 class="header-author">Cruise Yang</h1>
+			</hgroup>
+			
+			<p class="header-subtitle">纸上得来终觉浅，绝知此事要躬行</p>
+			
+			<nav class="header-menu">
+				<ul>
+				
+					<li><a href="/">主页</a></li>
+		        
+					<li><a href="/archives">文章</a></li>
+		        
+					<li><a href="/tags/thoughts">随笔</a></li>
+		        
+					<li><a href="/about">关于</a></li>
+		        
+		        <div class="clearfix"></div>
+				</ul>
+			</nav>
+			<nav class="header-nav">
+				<div class="social">
+					
+						<a class="github" target="_blank" href="https://github.com/cruise1008" title="github">github</a>
+			        
+						<a class="weibo" target="_blank" href="http://weibo.com/cruise" title="weibo">weibo</a>
+			        
+						<a class="zhihu" target="_blank" href="https://www.zhihu.com/people/cruiseyoung" title="zhihu">zhihu</a>
+			        
+						<a class="douban" target="_blank" href="https://www.douban.com/people/cruiseyoung/" title="douban">douban</a>
+			        
+				</div>
+			</nav>
+		</header>				
+	</div>
+</nav>
+
+      <div class="body-wrap"><article id="post-Android-GC-从dalvik到ART的改进分析" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a href="/2016/03/30/Android-GC-从dalvik到ART的改进分析/" class="article-date">
+  	<time datetime="2016-03-30T01:40:52.000Z" itemprop="datePublished">2016-03-30</time>
+</a>
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Android GC 从dalvik到ART的改进分析
+    </h1>
+  
+
+      </header>
+      
+      <div class="article-info article-info-post">
+        
+	<div class="article-tag tagcloud">
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/android/">android</a></li></ul>
+	</div>
+
+        
+
+        <div class="clearfix"></div>
+      </div>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+      <p>自从android4.4开始加入ART虚拟机，从5.0开始完全用ART代替Dalvik虚拟机，ART的优点越来越被开发者和用户接受。很多用户会觉得android从5.0开始很流畅，很少卡顿，其实从GC角度看，是因为系统GC的过程得到了优化，GC过程中的几次暂停时间缩短了。接下来我主要从dalvik和ART二者的GC的改进的地方来分析一下，为什么ART的使用会使android系统性能和流畅有着如此之大的提升。<br>我将分别从Dalvik和ART两方面来介绍相关的详细机制和实现，然后再对比二者的改进，结合实验数据来探讨android系统在ART的GC的改进优势。  </p>
+<h2 id="1-Dalvik的垃圾收集"><a href="#1-Dalvik的垃圾收集" class="headerlink" title="1. Dalvik的垃圾收集"></a>1. Dalvik的垃圾收集</h2><p>在Dalvik时代，Android更是在这方面深受困扰。由于内存较小，每次APP应用程序需要分配内存时，如果堆空间不能提供一个足够大的空间时就会启动Dalvik的垃圾收集器。GC收集器会遍历整个堆地址空间，然后查看每个app分配的对象，并进行相应的标记，然后进行回收过程。<br>Dalvik除了要给新的应用程序分配内存空间外，还需要对已经分配的内存空间的对象进行内存管理，主要就是我们之前提到的自动垃圾收集。这个垃圾收集主要是mark sweep算法实现的。简单点说，dalvik虚拟机的mark-sweep算法就分为两个阶段，即mark阶段和sweep阶段。Dalvik的GC过程，可以大致归纳为如下过程：<br>整个标记开始之前，首先遍历一次堆地址空间。<br>Mark阶段： 从对象的根集对象开始标记引用对象。<br>Sweep阶段： 回收没有被标记的对象占用的内存。    </p>
+<p>Mark阶段就是从根集对象开始标记被引用的对象，在完成了mark标记后，就进入sweep阶段，即回收那些没有被标记的对象占用的内存。接下来我们主要分析一下这个算法，才能更好的比较分析新的ART和dalvik的区别。其实sweep阶段很简单了，现在的重点是讲解一下mark阶段。   </p>
+<h3 id="1-1-dalvik的mark阶段"><a href="#1-1-dalvik的mark阶段" class="headerlink" title="1.1 dalvik的mark阶段"></a>1.1 dalvik的mark阶段</h3><p>Mark阶段最主要的工作就是标记已经被引用的对象。用到的最主要的一个数据结构叫heap bitmap。事实上，总共使用了两个bitmap，一个是live bitmap，一个是mark bitmap。这个bitmap里的每一位对应一个对象，某个对象被引用了，就标1，没引用就标0。Livebitmap主要用来标记上一次GC时被引用的对象，也就是那些没有被回收的对象，而markbitmap主要用来标记当前GC有被引用的对象。因此在判断需要回收哪些对象时，就是那些在Live bitmap中标为1，而在mark bitmap中标为0的对象。<br><strong>仔细思考这个流程可以发现，mark bitmap实际上就是live bitmap的一个子集。</strong><br>在mark阶段，要求除了GC线程外，其他的线程都需要停止，否则就可能不能正确的标记每个对象，因为可能刚标记完又被修改引用等等情况的发生。这种现象叫stop the world，会导致该应用程序中止执行，造成停顿，为了减少这种停顿的发生，dalvik采用了并行的垃圾回收算法，即Concurrent GC。<br>在整个mark开始时，GC会先不得不中止一次程序的运行，从而对堆地址空间进行一次遍历，这次遍历可以获得每一个应用程序分配的对象，就能确认每个对象在内存堆中的大小、起始地址等等信息。    <strong>这个停顿在dalvik里是不得不做的事情，每次GC都会必须触发一次堆地址空间的遍历引起的停顿。</strong><br>接下来就是真正的标记阶段了。为了减少stop the world带来的负面影响，dalvik的GC采用了Concurrent方法，实现时，GC将mark阶段又分为了两个子阶段，一个是标记根集对象，一个是标记根集对象引用的对象。所谓根集对象，就是指在GC线程开始的时候，那些被全局变量、栈变量和寄存器等引用的对象。通过这些根集变量，可以顺着它们找到其余的被引用变量。比如说，假如发现了一个栈变量引用一个对象，而这个对象又引用了另外一个对象，那这个被引用的对象也会被标记为正在使用。这个标记“被根集对象引用的对象”的过程就是第二个子阶段。在ConcurrentGC中，mark的第一个阶段，<strong>在标记根集对象的阶段是不允许GC线程之外的线程运行的</strong>，但是mark的第二个阶段允许其他线程运行。这样就可能带来一个问题是，在第二个阶段执行的过程中，如果某个运行的线程修改了一个对象了内容，由于很有可能引用了新的对象，所以这个对象也必须要记录起来。否则会发生被引用对象还在使用却被回收。这种情况出现在只进行部分GC的情况，这时候Card Table的作用就是用来记录非GC堆对象对GC的堆对象的引用。Dalvik的堆空间，分为zygote heap 和 active heap。 前者主要存放一些在zygote时就分配的对象，后者主要用于之后新分配的空间，Dalvik虚拟机进行部分垃圾收集时，实际上就是只收集在Active heap上分配的对象。Card Table就是用来记录在Zygote heap上分配的对象在GC执行过程中对在Active heap上分配的对象的引用。<br>Card table由一系列card组成，一个card实际上就是一个字节，它的值分为clean和dirty两种。如果一个Card的值是CLEAN，就表示与它对应的对象在Mark第二个子阶段没有被程序修改过。如果一个Card的值是DIRTY，就意味着被程序修改过，对于这些被修改过的对象。<strong>需要在Mark第二子阶段结束之后，再次禁止GC线程之外的其它线程执行</strong>，以便GC线程再次根据Card Table记录的信息对被修改过的对象引用的其它对象进行重新标记。由于Mark第二子阶段执行的时间不会太长，因此在这个阶段被修改的对象不会很多，这样就可以保证第二次子阶段结束后，再次执行标记对象的过程是很快的，因而此时对程序造成的停顿非常小。<br>在mark阶段，主要是标记的第二个子阶段，dalvik是采用递归的方式来遍历标记对象。但是这个递归并不是像一般的递归一样借助一个递归函数来实现，而是使用一个叫做mark stack的栈空间实现。大致过程是：一个被引用的对象在标记的过程中，先被标记，然后放在栈中，等该对象的父对象全部被标记完成后，依次弹出栈中的每一个对象，并标记其引用，然后把其引用再丢到栈中。<br>这里可能会有一个疑问，一般在递归时都采用的函数递归的方法，<strong>但是为什么这里要采用mark stack呢</strong>？可以思考，采用mark stack栈而不是函数递归的好处是：首先可以采用并行的方式来做，将栈进行分段，多个线程共同将栈中的数据递归标记。其次，可以避免函数堆栈占用较深。<br>至此，差不多介绍了dalvik的GC的mark阶段的过程。我们可以发现，在mark阶段，一共有3次停顿，一次是在标记开始前遍历堆地址空间的停顿，一次是在标记的第一个阶段标记所有根集对象时的停顿，还有一次是在标记的第二个子阶段完成后处理card table时的停顿。这3次停顿的时间直接影响了android上应用程序的表现，尤其是卡顿现象，因此ART在这块有重点改进，下文会介绍ART上的过程。  </p>
+<h3 id="1-2-dalvik的sweep阶段"><a href="#1-2-dalvik的sweep阶段" class="headerlink" title="1.2 dalvik的sweep阶段"></a>1.2 dalvik的sweep阶段</h3><p>其实sweep阶段就很简单了，在mark阶段已经提到过，GC时回收的是在live bitmap里标为1而在mark bitmap里标为0的对象。而这个mark bitmap实际上就是live bitmap的子集，因此在sweep阶段只需要处理二者的差集即可，在回收掉相应的对象后，只需要再把live bitmap和mark bitmap的指针调换一下，即这次的mark bitmap作为下一次GC时的live bitmap，然后清空live bitmap。<br>其过程和ART的没什么太大变化，而由于在android 5.0源码中已经去掉了dalvik，这环节的具体解释就在ART部分分析，但是实际上在sweep阶段dalvik和ART二者没有太大区别，因为主要只是处理相应的bitmap的对应的对象的内存,ART也没有什么优化的地方。  </p>
+<h2 id="2-ART的垃圾收集"><a href="#2-ART的垃圾收集" class="headerlink" title="2 ART的垃圾收集"></a>2 ART的垃圾收集</h2><p>ART同样采用了自动GC的策略，并且同样不可避免的使用到了经典的mark-sweep算法。</p>
+<h3 id="2-1-mark-sweep收集器"><a href="#2-1-mark-sweep收集器" class="headerlink" title="2.1 mark-sweep收集器"></a>2.1 mark-sweep收集器</h3><p>在android源码中，ART的部分的GC在使用mark-sweep算法进行自动垃圾收集时，根据轻重程度不同，分为三类，sticky，partial，full。可以看到，ART里的GC的改进，首先就是收集器的多样化。<br>而根据GC时是否暂停所有的线程分类并行和非并行两类。所以在ART中一共定义了6个mark-sweep收集器。参看art/runtime/gc/heap.cc可见。根据不同情况，ART会选择不同的GC collector进行GC工作。其实最复杂的就是Concurrent Mark Sweep 收集器。如果理解了最复杂的Concurrent Mark Sweep算法，其他5种GC收集器的工作原理就也理解了。同样的，垃圾回收工作从整体上可以划分两个大的阶段：Mark 和 Sweep。</p>
+<h4 id="1-Mark阶段"><a href="#1-Mark阶段" class="headerlink" title="1) Mark阶段"></a>1) Mark阶段</h4><p>最重要的提升就是这个阶段只暂停线程一次。将dalvik的三次缩短到一次，得到了较大的优化。和dalvik一样，标记阶段完成的工作也是完成从根集对象出发，进行递归遍历标记被引用的对象的整个过程。用到的主要的数据结构也是同样的live bitmap和mark bitmap， 以及card table和在递归遍历标记时用到的mark stack。<br>一个被引用的对象在标记的过程中先被标记，然后存入mark stack中，等待该对象的父对象全部被标记完成，再依次弹出栈中每一个对象然后，标记这个对象的引用，再把引用存入mark stack，重复这个过程直至整个栈为空。这个过程对mark stack的操作使用以及递归的方法和dalvik的递归过程是一样的。但是在dalvik小节里提到了，在标记时mark阶段划分成了两个阶段，第一小阶段是禁止其他线程执行的，在mark两个阶段完成后处理card table时也是禁止其他线程执行的。但是在ART里做出了改变，即先Concurrent标记两遍，也就是说两个子阶段都可以允许其他线程运行了。然后再Non-Concurrent标记一遍。<strong>这样就大大缩短了dalvik里的第二次停顿的带来的卡顿时间</strong>。这个改进非常重要。<br>在对mark stack使用时，在初始阶段，为后面的mark准备好mark<em>stack</em>。<br>但是值得一提的是，在标记开始阶段，有别于dalvik的要暂停所有线程进行堆地址空间的遍历，ART去掉了这个过程，替代的是增加了一个叫作allocation stack结构，所有新分配的对象会记录到allocation stack，然后在Mark的时候，再在Live Bitmap中打上live的标记。Allocation stack和live stack其实是一个工作栈和备份栈。当在GC的时候，需要处理allocation stack，那么会把两个stack互换。新分配的对象会压到备份栈中，这个时候备份栈就当作新的工作栈。<strong>这样一来，dalvik在GC时产生的第一次停顿就完全消除了</strong>，从而产生了巨大的性能提升。<br>关于card table，和dalvik依旧类似，每个card用一个字节来描述。ART里多了一个结构ModUnionTable，是和card table配合使用的。<br>前面在ConCurrent的情况下，经过了两轮的递归遍历，基本上已经标记扫描的差不多了。但由于应用程序主线程是在一直运行的，不可避免地会修改之前已经mark过的bitmap。因此，需要第三遍扫描，这次就需要在stop the world的情况下进行遍历，主要过程也就是上文提到的对card table的操作等等。<br>这次遍历扫的时候，除了重新标记根集以外，还需要扫描card table中Dirty Card的部分。关于live bitmap和mark bitmap的使用，ART和dalvik在这一块没有多少区别。Live Bitmap记录了当前存在于VM进程中所有的未标记的对象和标记过的对象。Mark Bitmap经过了Mark 的过程，记录了当前VM进程中所有被引用的object。Live Bitmap和Mark Bitmap中间的差集，便是所有为被系统引用的object，即是可以回收的垃圾了。<br>经过了前面3次扫描以及Mark，我们的mark bitmap已经很完整了。但是值得注意的是，由于Sweep的操作是对应于live bitmap，即那些在live bitmap中标记过，却在mark bitmap中没有标记的对象。也就是说，mark bitmap中标记的对象是live bitmap中标记对象的子集。但目前为止live bitmap标记的对象还不是最全，因为前文有提到过，为了消除dalvik的第一次停顿，ART计入了allocation stack中的对象，还没有标记。Allocation stack先“搁置”起来不让后面的主线程使用，启用备份的的live stack。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> Heap::SwapStacks() &#123;</span><br><span class="line">    allocation_stack_.swap(live_stack_);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="2-Sweep阶段"><a href="#2-Sweep阶段" class="headerlink" title="2) Sweep阶段"></a>2) Sweep阶段</h4><p>在完成了mark阶段后，对应已经标好的live bitmap和mark bitmap，需要进入sweep来回收相应的垃圾。Sweep阶段就是把那些二者的差集所占用的内存回收掉。</p>
+<h4 id="3-Finish阶段"><a href="#3-Finish阶段" class="headerlink" title="3) Finish阶段"></a>3) Finish阶段</h4><p>在dalvik中没有发现的是，ART中可以归纳为有一个第三个阶段，就是类似的一个finish阶段。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> MarkSweep::FinishPhase() &#123;</span><br><span class="line">	base::TimingLogger::<span class="function">ScopedSplit <span class="title">split</span><span class="params">(<span class="string">"FinishPhase"</span>, &amp;timings_)</span></span>;</span><br><span class="line">	<span class="comment">// Can't enqueue references if we hold the mutator lock.</span></span><br><span class="line">	Object* cleared_references = GetClearedReferences();</span><br><span class="line">	Heap* heap = GetHeap();</span><br><span class="line">	timings_.NewSplit(<span class="string">"EnqueueClearedReferences"</span>);</span><br><span class="line">	heap-&gt;EnqueueClearedReferences(&amp;cleared_references);</span><br><span class="line">	......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>因为之前说过mark bitmap是live bitmap的一个子集，而mark bitmap中包含了所有的正在被引用的的非垃圾的对象，因此需要交换mark bitmap和live bitmap的指针，使mark bitmap作为下一次GC的live bitmap，并且重置新的mark bitmap。   </p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//Clear all of the spaces' mark bitmaps.</span></span><br><span class="line"><span class="keyword">for</span> (<span class="keyword">const</span> <span class="keyword">auto</span>&amp; space : GetHeap()-&gt;GetContinuousSpaces()) &#123;</span><br><span class="line">	<span class="keyword">if</span> (space-&gt;GetGcRetentionPolicy() != space::kGcRetentionPolicyNeverCollect) &#123;</span><br><span class="line">		space-&gt;GetMarkBitmap()-&gt;Clear();	</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line">mark_stack_-&gt;Reset();</span><br></pre></td></tr></table></figure>
+<p>另外，需要指出的是，由于mark stack的目的是为了方便标记的递归，所以在Finish阶段，也需要把mark stack给清空，至于实现可以看以上代码行。</p>
+<h3 id="2-2-sticky-mark-sweep收集器"><a href="#2-2-sticky-mark-sweep收集器" class="headerlink" title="2.2 sticky mark sweep收集器"></a>2.2 sticky mark sweep收集器</h3><p>其实sticky mark sweep的主要步骤也是和mark sweep的过程大致一样，主要完成三次并发的mark阶段，然后进行一个stop the world的非并发进行一次对堆对象的遍历。   </p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">void StickyMarkSweep::BindBitmaps() &#123;</span><br><span class="line">	PartialMarkSweep::BindBitmaps();</span><br><span class="line">	WriterMutexLock mu(Thread::Current(), *Locks::heap_bitmap_lock_);</span><br><span class="line">	// For sticky GC, we want to bind the bitmaps of all spaces as the allocation stack lets us</span><br><span class="line">	// know what was allocated since the last GC. A side-effect of binding the allocation space mark</span><br><span class="line">	// and live bitmap is that marking the objects will place them in the live bitmap.</span><br><span class="line">	for (const auto&amp; space : GetHeap()-&gt;GetContinuousSpaces()) &#123;</span><br><span class="line">		if (space-&gt;GetGcRetentionPolicy() == space::kGcRetentionPolicyAlwaysCollect) &#123;</span><br><span class="line">			BindLiveToMarkBitmap(space);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	GetHeap()-&gt;GetLargeObjectsSpace()-&gt;CopyLiveToMarked();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>但是可以通过实现方法发现，有一个getGcRetenionPolicy，获取的是一个枚举。</p>
+<p>只有符合总是收集的条件的，就把live bitmap和mark bitmap绑定起来。其余的过程和full是一样的。Sticky Mark sweep只扫描自从上次GC后被修改过的堆空间，并且也只回收自从上次GC后分配的空间。Sticky是只回收kGcRetentionPolicyAlwaysCollect的space。不回收其他两个，因此sticky的回收的力度是最小的。作为最全面的full mark sweep, 上面的三个策略都是会回收的。</p>
+<h3 id="2-3-partial-mark-sweep收集器"><a href="#2-3-partial-mark-sweep收集器" class="headerlink" title="2.3 partial mark sweep收集器"></a>2.3 partial mark sweep收集器</h3><p>这是mark sweep收集器里使用的最少的GC收集策略。按照官方文档，一般是使用sticky mark sweep较多。这里有一个概念就是吞吐率，即一次GC释放的字节数和GC持续的时间（秒）的比值。由于一般是sticky mark sweep进行GC，所以当上次GC的吞吐率小于同时的partial mark sweep的吞吐率时，就会把下次GC收集器从sticky变成partial。但是在partial执行一次GC后，就仍然会恢复到stick mark sweep收集器。<br>阅读源码发现，partial重写了父类的成员函数。<br><strong>其实分析这些可以发现，从full mark sweep到partial mark sweep到stick mark sweep,GC的力度是越来越小的，因为可以回收的越来越少</strong>。之所以说回收力度大，就是指可以回收的space多，比如上图的partial, 是不回收kGcRetentionPolicyFullCollect，但是是会回收kGcRetentionPolicyAlwaysCollect的space的。<br>因此partial mark sweep每次执行一次GC后，就会自动切换到sticky策略，这样才能使系统更流畅得进行GC，并减少了GC带来的消耗。。</p>
+<h3 id="2-4-其他区别"><a href="#2-4-其他区别" class="headerlink" title="2.4 其他区别"></a>2.4 其他区别</h3><p>其实观察space目录的文件可以发现，有一个新的概念就是large object space。事实上，ART还引入了一个新的的方法就是大对象存储空间(large object space，LOS)，这个空间与堆是相互独立的，但是仍然是驻留在应用程序的内存空间中。方便让ART可以更好的管理较大的对象，比如android里的bitmap。在dalvik中，在对堆空间进行分段时，占用空间较大的对象会带来一些问题。例如，在分配一个bitmap大对象时，由于占用空间较大，可能引起GC的启动次数也会增加，从而增加了开销。有了LOS，GC收集器因堆空间分段而引发调用次数将会大大降低，这样垃圾收集器就能做更加合理的内存分配，从而降低运行时开销。</p>
+<h2 id="3-实验对比证明"><a href="#3-实验对比证明" class="headerlink" title="3 实验对比证明"></a>3 实验对比证明</h2><p>为了更形象的了解ART在GC这个环节对比Dalvik到底有了多大的改善，我同样的进行的实验。实验使用的手机，保证了总的RAM内存是相同的，安装的应用程序也都是相同的。我们分别在dalvik模式下和ART模式下观察运行支付宝APP的GC表现。</p>
+<p>在ART下启动运行开始时的GC表现。</p>
+<p>03-04 10:07:20.524: I/art(5703): Background partial concurrent mark sweep GC freed 65419(7MB) AllocSpace objects, 136(11MB) LOS objects, 20% free, 60MB/76MB, paused 6.695ms total 107.116ms<br>03-04 10:08:05.302: I/art(2176): Background partial concurrent mark sweep GC freed 63122(4MB) AllocSpace objects, 2(40KB) LOS objects, 24% free, 50MB/66MB, paused 1.289ms total 123.983ms<br>我从GC 的log中截取了上述一段。其中的显式(GC_EXPLICIT)和并发(GC_CONCURRENT)是GC中比较通用的清除垃圾的调用。GC_FOR_ALLOC则是在内存分配器尝试分配新的内存空间，但堆空间不够用时调用的。可以看到，在dalvik模式下刚启动支付宝的几秒内，触发了28次GC事件，总共停顿耗时4657ms。而在ART模式下，可以看到一共触发了2次GC事件，共耗时231.099ms。<br>我们还可以拿之前的一次测试来看看结果，这次测试是当时操作系统课堂报告时做的测试，测试观察百度地图这个应用程序的GC表现，结果可以从下面看出，分别是dalvik和ART的log。</p>
+<p>12-24 15:34:21.046: D/dalvikvm(577): GC_FOR_ALLOC freed 3690K, 19% free 30176K/36844K, paused 517ms, total 517ms<br>12-24 15:34:21.062: D/dalvikvm(30509): GC_CONCURRENT freed 1968K, 49% free 11561K/22312K, paused 28ms+5ms, total 224ms<br>12-24 15:34:21.062: D/dalvikvm(30509): WAIT_FOR_CONCURRENT_GC blocked 179ms<br>12-24 15:34:21.070: D/dalvikvm(30509): WAIT_FOR_CONCURRENT_GC blocked 183ms<br>12-24 15:34:21.078: D/dalvikvm(30509): WAIT_FOR_CONCURRENT_GC blocked 188ms<br>12-24 15:34:21.093: D/dalvikvm(30509): WAIT_FOR_CONCURRENT_GC blocked 124ms<br>12-24 15:34:21.523: D/dalvikvm(577): GC_FOR_ALLOC freed 6K, 17% free 33769K/40448K, paused 452ms, total 452ms<br>12-24 15:34:21.585: D/dalvikvm(30509): GC_CONCURRENT freed 1005K, 49% free 11554K/22312K, paused 30ms+19ms, total 261ms<br>12-24 15:34:21.585: D/dalvikvm(30509): WAIT_FOR_CONCURRENT_GC blocked 192ms<br>12-24 15:34:21.585: D/dalvikvm(30509): WAIT_FOR_CONCURRENT_GC blocked 199ms<br>12-24 15:34:22.171: D/dalvikvm(577): GC_CONCURRENT freed 110K, 17% free 33744K/40448K, paused 99ms+52ms, total 612ms<br>12-24 15:34:22.171: D/dalvikvm(577): WAIT_FOR_CONCURRENT_GC blocked 336ms<br>12-24 15:34:22.421: D/dalvikvm(877): GC_CONCURRENT freed 1203K, 62% free 7760K/20000K, paused 147ms+20ms, total 354ms<br>12-24 15:34:22.437: D/dalvikvm(577): GC_FOR_ALLOC freed 68K, 16% free 35701K/42476K, paused 255ms, total 255ms<br>12-24 15:34:23.101: D/dalvikvm(577): GC_CONCURRENT freed 661K, 16% free 35720K/42476K, paused 23ms+83ms, total 668ms<br>12-24 15:34:24.632: D/dalvikvm(758): GC_CONCURRENT freed 387K, 33% free 10427K/15496K, paused 4ms+17ms, total 135ms<br>12-24 15:34:24.640: D/dalvikvm(30509): GC_CONCURRENT freed 691K, 48% free 11804K/22312K, paused 5ms+33ms, total 279ms<br>12-24 15:34:24.906: D/dalvikvm(30825): GC_CONCURRENT freed 305K, 15% free 8710K/10160K, paused 3ms+2ms, total 63ms<br>12-24 15:34:26.179: D/dalvikvm(30509): GC_CONCURRENT freed 875K, 47% free 11998K/22312K, paused 147ms+6ms, total 498ms<br>12-24 15:34:26.179: D/dalvikvm(30509): WAIT_FOR_CONCURRENT_GC blocked 362ms<br>12-24 15:34:26.453: D/dalvikvm(30509): GC_CONCURRENT freed 696K, 45% free 12430K/22312K, paused 21ms+27ms, total 229ms<br>12-24 15:34:26.992: D/dalvikvm(30509): GC_CONCURRENT freed 1626K, 47% free 12018K/22312K, paused 8ms+5ms, total 62ms<br>12-24 15:34:27.062: D/dalvikvm(30509): GC_CONCURRENT freed 1038K, 47% free 12016K/22312K, paused 5ms+5ms, total 53ms<br>12-24 15:34:27.140: D/dalvikvm(30509): GC_CONCURRENT freed 1051K, 47% free 12016K/22312K, paused 7ms+5ms, total 57ms<br>12-24 15:34:27.257: D/dalvikvm(30509): GC_CONCURRENT freed 1038K, 47% free 12017K/22312K, paused 5ms+6ms, total 101ms<br>12-24 15:34:27.429: D/dalvikvm(30509): GC_CONCURRENT freed 1050K, 47% free 12017K/22312K, paused 5ms+6ms, total 55ms<br>12-24 15:34:27.531: D/dalvikvm(30509): GC_CONCURRENT freed 1043K, 47% free 12016K/22312K, paused 5ms+5ms, total 57ms<br>12-24 15:34:27.601: D/dalvikvm(30509): GC_CONCURRENT freed 1043K, 47% free 12016K/22312K, paused 5ms+6ms, total 57ms<br>12-24 15:34:27.710: D/dalvikvm(30509): GC_CONCURRENT freed 1037K, 47% free 12016K/22312K, paused 5ms+7ms, total 78ms<br>12-24 15:34:27.796: D/dalvikvm(30509): GC_CONCURRENT freed 1042K, 47% free 12016K/22312K, paused 5ms+6ms, total 58ms<br>12-24 15:34:27.882: D/dalvikvm(30509): GC_CONCURRENT freed 1036K, 47% free 12016K/22312K, paused 5ms+5ms, total 51ms<br>12-24 15:34:27.960: D/dalvikvm(30509): GC_CONCURRENT freed 1041K, 47% free 12016K/22312K, paused 5ms+5ms, total 53ms<br>12-24 15:34:28.039: D/dalvikvm(30509): GC_CONCURRENT freed 1041K, 47% free 12016K/22312K, paused 5ms+5ms, total 56ms<br>12-24 15:34:28.414: D/dalvikvm(30509): GC_CONCURRENT freed 1153K, 47% free 11987K/22312K, paused 9ms+6ms, total 137ms<br>12-24 15:34:28.414: D/dalvikvm(30509): WAIT_FOR_CONCURRENT_GC blocked 106ms<br>12-24 15:34:28.468: D/dalvikvm(30509): GC_CONCURRENT freed 766K, 45% free 12293K/22312K, paused 7ms+6ms, total 44ms<br>12-24 15:34:28.468: D/dalvikvm(30509): WAIT_FOR_CONCURRENT_GC blocked 37ms<br>12-24 15:34:28.523: D/dalvikvm(30509): GC_FOR_ALLOC freed 1063K, 45% free 12421K/22312K, paused 46ms, total 46ms<br>12-24 15:34:28.921: D/dalvikvm(30509): GC_CONCURRENT freed 1044K, 44% free 12548K/22312K, paused 11ms+8ms, total 174ms<br>12-24 15:34:31.210: D/dalvikvm(12328): GC_FOR_ALLOC freed 345K, 15% free 10241K/12048K, paused 109ms, total 109ms<br>12-24 15:34:31.359: D/dalvikvm(12328): GC_FOR_ALLOC freed &lt;1K, 16% free 10249K/12060K, paused 153ms, total 153ms<br>12-24 15:34:31.437: D/dalvikvm(12328): GC_FOR_ALLOC freed 11K, 16% free 10237K/12060K, paused 76ms, total 76ms<br>12-24 15:34:31.445: D/dalvikvm(30509): GC_CONCURRENT freed 549K, 41% free 13325K/22312K, paused 14ms+20ms, total 196ms<br>12-24 15:34:31.445: D/dalvikvm(30509): WAIT_FOR_CONCURRENT_GC blocked 184ms<br>12-24 15:34:31.445: D/dalvikvm(30509): WAIT_FOR_CONCURRENT_GC blocked 164ms<br>12-24 15:34:31.445: D/dalvikvm(30509): WAIT_FOR_CONCURRENT_GC blocked 88ms<br>12-24 15:34:31.507: D/dalvikvm(12328): GC_FOR_ALLOC freed 0K, 16% free 10245K/12072K, paused 66ms, total 66ms<br>12-24 15:34:31.570: D/dalvikvm(30509): GC_FOR_ALLOC freed 2347K, 45% free 12289K/22312K, paused 61ms, total 61ms<br>12-24 15:34:31.640: D/dalvikvm(30509): GC_FOR_ALLOC freed 689K, 45% free 12414K/22312K, paused 44ms, total 44ms<br>12-24 15:34:32.101: D/dalvikvm(12328): GC_FOR_ALLOC freed 23K, 16% free 10240K/12072K, paused 36ms, total 36ms<br>12-24 15:34:32.140: D/dalvikvm(12328): GC_FOR_ALLOC freed &lt;1K, 16% free 10247K/12084K, paused 37ms, total 37ms<br>12-24 15:34:32.210: D/dalvikvm(12328): GC_FOR_ALLOC freed &lt;1K, 16% free 10247K/12084K, paused 71ms, total 71ms<br>12-24 15:34:32.398: D/dalvikvm(12328): GC_FOR_ALLOC freed 0K, 16% free 10255K/12096K, paused 188ms, total 188ms<br>12-24 15:34:32.515: D/dalvikvm(12328): GC_FOR_ALLOC freed 31K, 16% free 10239K/12096K, paused 45ms, total 45ms<br>12-24 15:34:32.578: D/dalvikvm(12328): GC_FOR_ALLOC freed 32K, 16% free 10239K/12096K, paused 30ms, total 30ms<br>12-24 15:34:32.695: D/dalvikvm(12328): GC_FOR_ALLOC freed 79K, 16% free 10247K/12096K, paused 49ms, total 49ms<br>12-24 15:34:35.054: D/dalvikvm(30509): GC_CONCURRENT freed 1760K, 47% free 11834K/22312K, paused 5ms+13ms, total 106ms<br>12-24 15:34:38.265: D/dalvikvm(30509): GC_FOR_ALLOC freed 606K, 46% free 12058K/22312K, paused 55ms, total 56ms<br>12-24 15:34:38.351: D/dalvikvm(30509): GC_FOR_ALLOC freed 254K, 45% free 12308K/22312K, paused 68ms, total 70ms<br>12-24 15:34:38.429: D/dalvikvm(30509): GC_FOR_ALLOC freed 521K, 43% free 12803K/22312K, paused 64ms, total 64ms<br>12-24 15:34:38.500: D/dalvikvm(30509): GC_FOR_ALLOC freed 1952K, 46% free 12112K/22312K, paused 46ms, total 46ms<br>12-24 15:34:38.554: D/dalvikvm(30509): GC_FOR_ALLOC freed 276K, 45% free 12338K/22312K, paused 44ms, total 44ms<br>12-24 15:34:38.609: D/dalvikvm(30509): GC_FOR_ALLOC freed 514K, 43% free 12833K/22312K, paused 44ms, total 44ms<br>12-24 15:34:38.664: D/dalvikvm(30010): GC_CONCURRENT freed 402K, 15% free 8869K/10416K, paused 3ms+2ms, total 31ms<br>12-24 15:34:38.671: D/dalvikvm(30509): GC_FOR_ALLOC freed 1193K, 43% free 12796K/22312K, paused 51ms, total 52ms<br>12-24 15:34:38.726: D/dalvikvm(30509): GC_FOR_ALLOC freed 269K, 42% free 13023K/22312K, paused 45ms, total 45ms<br>12-24 15:34:38.789: D/dalvikvm(30509): GC_FOR_ALLOC freed 521K, 40% free 13517K/22312K, paused 57ms, total 57ms  </p>
+<p> ART 结果：<br>12-24 15:37:51.500: I/art(4735): Background sticky concurrent mark sweep GC freed 27480(1767KB) AllocSpace objects, 35(660KB) LOS objects, 4% free, 39MB/40MB, paused 7.802ms total 68.710ms<br>12-24 15:37:57.229: I/art(27369): Explicit concurrent mark sweep GC freed 82830(3MB) AllocSpace objects, 10(160KB) LOS objects, 39% free, 19MB/32MB, paused 744us total 84.814ms<br>12-24 15:37:57.341: I/art(745): Explicit concurrent mark sweep GC freed 47032(2MB) AllocSpace objects, 4(64KB) LOS objects, 24% free, 49MB/65MB, paused 1.161ms total 78.172ms  </p>
+<h2 id="12-24-15-38-00-259-I-art-5776-Background-sticky-concurrent-mark-sweep-GC-freed-29233-2MB-AllocSpace-objects-34-5MB-LOS-objects-14-free-28MB-33MB-paused-3-255ms-total-265-466ms"><a href="#12-24-15-38-00-259-I-art-5776-Background-sticky-concurrent-mark-sweep-GC-freed-29233-2MB-AllocSpace-objects-34-5MB-LOS-objects-14-free-28MB-33MB-paused-3-255ms-total-265-466ms" class="headerlink" title="12-24 15:38:00.259: I/art(5776): Background sticky concurrent mark sweep GC freed 29233(2MB) AllocSpace objects, 34(5MB) LOS objects, 14% free, 28MB/33MB, paused 3.255ms total 265.466ms  "></a>12-24 15:38:00.259: I/art(5776): Background sticky concurrent mark sweep GC freed 29233(2MB) AllocSpace objects, 34(5MB) LOS objects, 14% free, 28MB/33MB, paused 3.255ms total 265.466ms  </h2><p>从两张图可以清楚的发现，在dalvik模式下刚启动百度地图的几秒内，触发了26次GC事件，总共停顿耗时5371ms。而在ART模式下，可以看到一共触发了4次GC事件，共耗时497.162ms。<br>对比可以看到，ART下的GC的性能明显提升了，几乎可以说是提升了十倍左右，这是一个数量级的提升，GC环节带来的性能提升还是非常明显。  </p>
+<h2 id="4-总结"><a href="#4-总结" class="headerlink" title="4 总结"></a>4 总结</h2><p>首先通过对dalvik的GC的过程的分析，我们可以发现dalvik的在GC时出现的几个主要问题，首先即在GC时会有三次暂停其他进程运行，三次停顿导致的总的时间太长会导致丢帧卡顿现象严重。其次，就是在堆空间中给较大的对象分配空间后会导致碎片化比较严重，并且可能会导致GC调用次数变多增加开销。<br>我们可以发现，针对dalvik的以上两个问题，ART都有做了对应的优化来解决这些问题。针对第一个问题，ART在标记阶段做了非常大的优化，消除了第一次遍历堆地址空间的停顿，和第二次标记根集对象的停顿，并缩短了第三次处理card table的停顿，因此大大的缩短了应用程序在执行时的卡顿时间。针对第二个问题，提出了LOS的管理方法。<br>除此以外，还提供了丰富的GC收集器，例如继承自mark sweep的sticky mark sweep和partial mark sweep，二者的回收力度都要比full mark sweep小，因此性能上也得到了一些提升。一般情况下的收集器的主力就是sticky mark sweep, 这是对应用程序的性能影响最小的一种方式，因此大多数情况的GC表现，都要比dalvik的GC表现更好。<br>并且，通过实验数据的显示我们也可以看到，ART的GC的性能确实有了显著的提升，应用程序的流畅性得到了较好的保证。<br>以上都只是一个比较初步的分析比较，进一步的原理研究还需要详细学习源码才能融会贯通。</p>
+<h2 id="5-参考文档"><a href="#5-参考文档" class="headerlink" title="5 参考文档"></a>5 参考文档</h2><ol>
+<li><a href="https://source.android.com/devices/tech/dalvik/gc-debug.html；" target="_blank" rel="external">https://source.android.com/devices/tech/dalvik/gc-debug.html；</a></li>
+<li><a href="http://www.cnblogs.com/jinkeep/p/3818180.html" target="_blank" rel="external">http://www.cnblogs.com/jinkeep/p/3818180.html</a></li>
+<li><a href="https://infinum.co/the-capsized-eight/articles/art-vs-dalvik-introducing-the-new-android-runtime-in-kit-kat" target="_blank" rel="external">https://infinum.co/the-capsized-eight/articles/art-vs-dalvik-introducing-the-new-android-runtime-in-kit-kat</a></li>
+<li><a href="http://blog.csdn.net/luoshengyang/article/details/42555483" target="_blank" rel="external">http://blog.csdn.net/luoshengyang/article/details/42555483</a></li>
+</ol>
+
+      
+    </div>
+    
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2016/04/01/java-JUC-包解析概要/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption"><</strong>
+      <div class="article-nav-title">
+        
+          java-juc-原子包解析概要
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/03/29/index/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">about</div>
+      <strong class="article-nav-caption">></strong>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+<div class="share_jia">
+	<!-- JiaThis Button BEGIN -->
+	<div class="jiathis_style">
+		<span class="jiathis_txt">Share to: &nbsp; </span>
+		<a class="jiathis_button_facebook"></a> 
+    <a class="jiathis_button_twitter"></a>
+    <a class="jiathis_button_plus"></a> 
+    <a class="jiathis_button_tsina"></a>
+		<a class="jiathis_button_cqq"></a>
+		<a class="jiathis_button_douban"></a>
+		<a class="jiathis_button_weixin"></a>
+		<a class="jiathis_button_tumblr"></a>
+    <a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>
+	</div>
+	<script type="text/javascript" src="http://v3.jiathis.com/code/jia.js?uid=1405949716054953" charset="utf-8"></script>
+	<!-- JiaThis Button END -->
+</div>
+
+
+
+
+
+
+<div class="duoshuo">
+	<!-- 多说评论框 start -->
+	<div class="ds-thread" data-thread-key="Android-GC-从dalvik到ART的改进分析" data-title="Android GC 从dalvik到ART的改进分析" data-url="http://yoursite.com/2016/03/30/Android-GC-从dalvik到ART的改进分析/"></div>
+	<!-- 多说评论框 end -->
+	<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+	<script type="text/javascript">
+	var duoshuoQuery = {short_name:"cruiseyang"};
+	(function() {
+		var ds = document.createElement('script');
+		ds.type = 'text/javascript';ds.async = true;
+		ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+		ds.charset = 'UTF-8';
+		(document.getElementsByTagName('head')[0] 
+		 || document.getElementsByTagName('body')[0]).appendChild(ds);
+	})();
+	</script>
+	<!-- 多说公共JS代码 end -->
+</div>
+
+
+
+
+</div>
+      <footer id="footer">
+  <div class="outer">
+    <div id="footer-info">
+    	<div class="footer-left">
+    		&copy; 2016 Cruise Yang
+    	</div>
+      	<div class="footer-right">
+      		<a href="http://hexo.io/" target="_blank">Hexo</a>  Theme <a href="https://github.com/litten/hexo-theme-yilia" target="_blank">Yilia</a> by Litten
+      	</div>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+
+<script>
+	var yiliaConfig = {
+		fancybox: true,
+		mathjax: true,
+		animate: true,
+		isHome: false,
+		isPost: true,
+		isArchive: false,
+		isTag: false,
+		isCategory: false,
+		open_in_new: false
+	}
+</script>
+<script src="http://7.url.cn/edu/jslib/comb/require-2.1.6,jquery-1.9.1.min.js"></script>
+<script src="/js/main.js"></script>
+
+
+
+
+
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+    tex2jax: {
+        inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+        processEscapes: true,
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+    }
+});
+
+MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+        all[i].SourceElement().parentNode.className += ' has-jax';                 
+    }       
+});
+</script>
+
+<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+  </div>
+</body>
+</html>
