@@ -4,19 +4,19 @@
   <meta charset="utf-8">
   
   <meta http-equiv="X-UA-Compatible" content="IE=edge" >
-  <title>Android的view到底是怎么绘制出来的，以及invalidate和requestLayout是怎么发生的 | cruise yang</title>
+  <title>Android的view到底是怎么绘制出来的 | cruise yang</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <meta name="description" content="我们都知道，在android中，一个Activity对应一个PhoneWindow，而在PhoneWindow中包含一个DecorView,并且这个DecorView就是页面的顶级视图，DecorView又分为TitleActionBar和contentView,我们平常所填充的布局一般都是在content中，好，这个是大的背景知识。  
 我们写了很多代码后也都会发现，其实在android中，每一">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Android的view到底是怎么绘制出来的，以及invalidate和requestLayout是怎么发生的">
+<meta property="og:title" content="Android的view到底是怎么绘制出来的">
 <meta property="og:url" content="http://yoursite.com/2016/04/18/android的view到底是怎么绘制出来的/index.html">
 <meta property="og:site_name" content="cruise yang">
 <meta property="og:description" content="我们都知道，在android中，一个Activity对应一个PhoneWindow，而在PhoneWindow中包含一个DecorView,并且这个DecorView就是页面的顶级视图，DecorView又分为TitleActionBar和contentView,我们平常所填充的布局一般都是在content中，好，这个是大的背景知识。  
 我们写了很多代码后也都会发现，其实在android中，每一">
-<meta property="og:updated_time" content="2016-04-25T09:26:02.000Z">
+<meta property="og:updated_time" content="2016-04-28T11:40:59.000Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Android的view到底是怎么绘制出来的，以及invalidate和requestLayout是怎么发生的">
+<meta name="twitter:title" content="Android的view到底是怎么绘制出来的">
 <meta name="twitter:description" content="我们都知道，在android中，一个Activity对应一个PhoneWindow，而在PhoneWindow中包含一个DecorView,并且这个DecorView就是页面的顶级视图，DecorView又分为TitleActionBar和contentView,我们平常所填充的布局一般都是在content中，好，这个是大的背景知识。  
 我们写了很多代码后也都会发现，其实在android中，每一">
   
@@ -76,7 +76,7 @@
 						<li>Tags</li>
 						
 						
-						<li>About</li>
+						<li>Über</li>
 						
 					</ul>
 				</div>
@@ -117,7 +117,7 @@
 				
 				<section class="switch-part switch-part2">
 					<div class="widget tagcloud" id="js-tagcloud">
-						<a href="/tags/android/" style="font-size: 16.67px;">android</a> <a href="/tags/java/" style="font-size: 13.33px;">java</a> <a href="/tags/java-juc/" style="font-size: 20px;">java juc</a> <a href="/tags/thoughts/" style="font-size: 10px;">thoughts</a> <a href="/tags/view源码/" style="font-size: 10px;">view源码</a>
+						<a href="/tags/Listview/" style="font-size: 10px;">Listview</a> <a href="/tags/android/" style="font-size: 20px;">android</a> <a href="/tags/android-view/" style="font-size: 10px;">android view</a> <a href="/tags/gc/" style="font-size: 10px;">gc</a> <a href="/tags/java/" style="font-size: 13.33px;">java</a> <a href="/tags/java-juc/" style="font-size: 20px;">java juc</a> <a href="/tags/java并发/" style="font-size: 16.67px;">java并发</a> <a href="/tags/sdk/" style="font-size: 10px;">sdk</a> <a href="/tags/thoughts/" style="font-size: 10px;">thoughts</a> <a href="/tags/view源码/" style="font-size: 10px;">view源码</a> <a href="/tags/view绘制/" style="font-size: 10px;">view绘制</a> <a href="/tags/同步/" style="font-size: 10px;">同步</a> <a href="/tags/垃圾回收/" style="font-size: 10px;">垃圾回收</a> <a href="/tags/异步/" style="font-size: 10px;">异步</a> <a href="/tags/锁/" style="font-size: 10px;">锁</a> <a href="/tags/随笔/" style="font-size: 10px;">随笔</a>
 					</div>
 				</section>
 				
@@ -204,7 +204,7 @@
         
   
     <h1 class="article-title" itemprop="name">
-      Android的view到底是怎么绘制出来的，以及invalidate和requestLayout是怎么发生的
+      Android的view到底是怎么绘制出来的
     </h1>
   
 
@@ -213,7 +213,7 @@
       <div class="article-info article-info-post">
         
 	<div class="article-tag tagcloud">
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/android/">android</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/view源码/">view源码</a></li></ul>
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/android/">android</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/sdk/">sdk</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/view源码/">view源码</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/view绘制/">view绘制</a></li></ul>
 	</div>
 
         
@@ -354,6 +354,15 @@
     
 <nav id="article-nav">
   
+    <a href="/2016/04/28/ListView-cache-index/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption"><</strong>
+      <div class="article-nav-title">
+        
+          你真的了解ListView的缓存吗
+        
+      </div>
+    </a>
+  
   
     <a href="/2016/04/09/互斥锁ReentrantLock一探究竟/" id="article-nav-older" class="article-nav-link-wrap">
       <div class="article-nav-title">互斥锁ReentrantLock一探究竟</div>
@@ -391,7 +400,7 @@
 
 <div class="duoshuo">
 	<!-- 多说评论框 start -->
-	<div class="ds-thread" data-thread-key="android的view到底是怎么绘制出来的" data-title="Android的view到底是怎么绘制出来的，以及invalidate和requestLayout是怎么发生的" data-url="http://yoursite.com/2016/04/18/android的view到底是怎么绘制出来的/"></div>
+	<div class="ds-thread" data-thread-key="android的view到底是怎么绘制出来的" data-title="Android的view到底是怎么绘制出来的" data-url="http://yoursite.com/2016/04/18/android的view到底是怎么绘制出来的/"></div>
 	<!-- 多说评论框 end -->
 	<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
 	<script type="text/javascript">

@@ -72,7 +72,7 @@
 						<li>Tags</li>
 						
 						
-						<li>About</li>
+						<li>Über</li>
 						
 					</ul>
 				</div>
@@ -113,7 +113,7 @@
 				
 				<section class="switch-part switch-part2">
 					<div class="widget tagcloud" id="js-tagcloud">
-						<a href="/tags/android/" style="font-size: 16.67px;">android</a> <a href="/tags/java/" style="font-size: 13.33px;">java</a> <a href="/tags/java-juc/" style="font-size: 20px;">java juc</a> <a href="/tags/thoughts/" style="font-size: 10px;">thoughts</a> <a href="/tags/view源码/" style="font-size: 10px;">view源码</a>
+						<a href="/tags/Listview/" style="font-size: 10px;">Listview</a> <a href="/tags/android/" style="font-size: 20px;">android</a> <a href="/tags/android-view/" style="font-size: 10px;">android view</a> <a href="/tags/gc/" style="font-size: 10px;">gc</a> <a href="/tags/java/" style="font-size: 13.33px;">java</a> <a href="/tags/java-juc/" style="font-size: 20px;">java juc</a> <a href="/tags/java并发/" style="font-size: 16.67px;">java并发</a> <a href="/tags/sdk/" style="font-size: 10px;">sdk</a> <a href="/tags/thoughts/" style="font-size: 10px;">thoughts</a> <a href="/tags/view源码/" style="font-size: 10px;">view源码</a> <a href="/tags/view绘制/" style="font-size: 10px;">view绘制</a> <a href="/tags/同步/" style="font-size: 10px;">同步</a> <a href="/tags/垃圾回收/" style="font-size: 10px;">垃圾回收</a> <a href="/tags/异步/" style="font-size: 10px;">异步</a> <a href="/tags/锁/" style="font-size: 10px;">锁</a> <a href="/tags/随笔/" style="font-size: 10px;">随笔</a>
 					</div>
 				</section>
 				
@@ -185,6 +185,138 @@
 
       <div class="body-wrap">
   
+    <article id="post-ListView-cache-index" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a href="/2016/04/28/ListView-cache-index/" class="article-date">
+  	<time datetime="2016-04-28T11:44:39.000Z" itemprop="datePublished">2016-04-28</time>
+</a>
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/04/28/ListView-cache-index/">你真的了解ListView的缓存吗</a>
+    </h1>
+  
+
+      </header>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+      <p>我们都知道ListView的baseAdapter中，使用了一个view的缓存回收机制，我们经常被告知会把不可见的view缓存起来，并且在新的view显示时会重用之前回收的view，实际中在开发时会使用convertView去进行相关处理。那么我们不禁会好奇，这个缓存回收机制到底是怎么实现的？我们不该仅仅会使用BaseAdapter重写各个方法就够了，我们需要往深处去挖点宝藏。今天我们就来看看listView和adapter在视图回收和缓存环节是怎么做到的。</p>
+<h1 id="AbsListView"><a href="#AbsListView" class="headerlink" title="AbsListView"></a>AbsListView</h1><p>ListView是一个继承自AbsListView的类，要想深入这一部分，我们需要看看AbsListView的源码。AbsListView还是比较复杂的，但是我们可以在ListView的scrollListItemsBy，layoutChildren等方法中看到几个叫mRecycler 和recycleBin的对象，看命名似乎是和视图回收机制重用等有关，mRecycler就是来自AbsListView的，我们可以继续看下去。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span><br><span class="line">* The data set used to store unused views that should be reused during the next layout</span><br><span class="line">* to avoid creating new ones</span><br><span class="line">*/</span></span><br><span class="line"><span class="keyword">final</span> RecycleBin mRecycler = <span class="keyword">new</span> RecycleBin();</span><br></pre></td></tr></table></figure>
+<p>涉及到这个功能，recycleBin是一个RecycleBin对象，RecycleBin是AbsListView的内部类。那我们就来研究一下RecycleBin这个类。<br>我们先看看这个注释。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span><br><span class="line">* The RecycleBin facilitates reuse of views across layouts. The RecycleBin has two levels of</span><br><span class="line">* storage: ActiveViews and ScrapViews. ActiveViews are those views which were onscreen at the</span><br><span class="line">* start of a layout. By construction, they are displaying current information. At the end of</span><br><span class="line">* layout, all views in ActiveViews are demoted to ScrapViews. ScrapViews are old views that</span><br><span class="line">* could potentially be used by the adapter to avoid allocating views unnecessarily.</span><br><span class="line">*/</span></span><br></pre></td></tr></table></figure>
+<p>大意就是RecycleBin实现了布局中view的重用。RecycleBin有两个层级的存储。</p>
+<ol>
+<li>ActiveViews ， 布局开始时要在屏幕中显示的view</li>
+<li>ScrapViews， 布局结束后所有的ActiveViews就降级为ScrapViews。ScrapViews就是旧view，主要是可能被adapter为了避免不必要的视图分配空间而重用。<br>好了，RecycleBin的结构我们搞懂了，那么关于ListView的核心问题就变成了RecycleBin是怎么运用ActiveViews和ScrapViews的了。换句话说就是ActiveViews和ScrapViews是怎么产生、怎么添加、怎么交换的？</li>
+</ol>
+<p>嗯，继续看源码。<br>private View[] mActiveViews = new View[0];<br>private ArrayList<view>[]  mScrapViews;</view></p>
+<p>mActiveViews就是一个ActiveViews堆，可以看到mActiveViews是一个View数组。<br>mScrapViews是一个ScrapViews堆，是一个ArrayList<view>数组。这里为什么要这样设计存储？我们先卖个关子。<br>在研究这两个不同层级的View堆前，我们先看看在ListView中怎么使用RecycleBin的。</view></p>
+<ol>
+<li>setAdapter方法中，mRecycler.clear();</li>
+<li>setAdapter方法中，设计到了viewType的操作，因为会有不同的视图结构，mRecycler.setViewTypeCount(mAdapter.getViewTypeCount());</li>
+<li>onMeasure方法中，</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (recycleOnMeasure() &amp;&amp; mRecycler.shouldRecycleViewType(((LayoutParams) child.getLayoutParams()).viewType)) &#123;</span><br><span class="line">    mRecycler.addScrapView(child, <span class="number">0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>makeAndAddView方法中，mRecycler.getActiveView(position);</li>
+<li>layoutChildren方法中， </li>
+</ol>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">final</span> RecycleBin recycleBin = mRecycler;</span><br><span class="line"><span class="keyword">if</span> (dataChanged) &#123;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; childCount; i++) &#123;</span><br><span class="line">        recycleBin.addScrapView(getChildAt(i), firstPosition+i);</span><br><span class="line">    &#125;</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    recycleBin.fillActiveViews(childCount, firstPosition);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Clear out old views</span></span><br><span class="line">detachAllViewsFromParent();</span><br><span class="line">recycleBin.removeSkippedScrap();</span><br><span class="line">……</span><br><span class="line"><span class="comment">// Flush any cached views that did not get reused above</span></span><br><span class="line">recycleBin.scrapActiveViews();</span><br></pre></td></tr></table></figure>
+<p>其中在layoutChildren中的用法特别典型，我们具体来看一看。<br>以上的这段代码可以大概看出一些逻辑思路：</p>
+<ol>
+<li>先判断数据是否有改变，如果改变了就将当前的children加到ScrapViews中，否则加到ActiveViews中。</li>
+<li>removeSkippedScrap，把旧的view都删掉。</li>
+<li>最后将以上没有被重用的缓存的view都回收掉。将当前的ActiveVies 移动到 ScrapViews。</li>
+</ol>
+<p>以上是我们通过这一段代码的一个猜测分析，现在一步步看看源码。<br>dataChanged是一个AdapterView的boolean变量。<br>其中ListView 继承自AbsListView, AbsListView 继承自AdapterView，AdapterView继承自ViewGroup.<br>对dataChanged的赋值主要是在AdapterView中的内部类AdapterDataSetObserver中进行的。我们知道listView的adapter使用了观察者模式。这个是怎么做到的？<br>我们先看看AdapterDataSetObserver的源码：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">AdapterDataSetObserver</span> <span class="keyword">extends</span> <span class="title">DataSetObserver</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> Parcelable mInstanceState = <span class="keyword">null</span>;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onChanged</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        mDataChanged = <span class="keyword">true</span>;</span><br><span class="line">        mOldItemCount = mItemCount;</span><br><span class="line">        mItemCount = getAdapter().getCount();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Detect the case where a cursor that was previously invalidated has</span></span><br><span class="line">        <span class="comment">// been repopulated with new data.</span></span><br><span class="line">        <span class="keyword">if</span> (AdapterView.<span class="keyword">this</span>.getAdapter().hasStableIds() &amp;&amp; mInstanceState != <span class="keyword">null</span></span><br><span class="line">                &amp;&amp; mOldItemCount == <span class="number">0</span> &amp;&amp; mItemCount &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            AdapterView.<span class="keyword">this</span>.onRestoreInstanceState(mInstanceState);</span><br><span class="line">            mInstanceState = <span class="keyword">null</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            rememberSyncState();</span><br><span class="line">        &#125;</span><br><span class="line">        checkFocus();</span><br><span class="line">        requestLayout();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onInvalidated</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        mDataChanged = <span class="keyword">true</span>;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (AdapterView.<span class="keyword">this</span>.getAdapter().hasStableIds()) &#123;</span><br><span class="line">            <span class="comment">// Remember the current state for the case where our hosting activity is being</span></span><br><span class="line">            <span class="comment">// stopped and later restarted</span></span><br><span class="line">            mInstanceState = AdapterView.<span class="keyword">this</span>.onSaveInstanceState();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Data is invalid so we should reset our state</span></span><br><span class="line">        mOldItemCount = mItemCount;</span><br><span class="line">        mItemCount = <span class="number">0</span>;</span><br><span class="line">        mSelectedPosition = INVALID_POSITION;</span><br><span class="line">        mSelectedRowId = INVALID_ROW_ID;</span><br><span class="line">        mNextSelectedPosition = INVALID_POSITION;</span><br><span class="line">        mNextSelectedRowId = INVALID_ROW_ID;</span><br><span class="line">        mNeedSync = <span class="keyword">false</span>;</span><br><span class="line"></span><br><span class="line">        checkFocus();</span><br><span class="line">        requestLayout();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">clearSavedState</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        mInstanceState = <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>代码很简单，继承自DataSetObserver，重写了onChanged和onInvalidated两个方法，对mDataChanged的操作都是在数据发生改变后将mDataChanged设为true，那么在哪里会变成false呢？AdapterView中已经没有了。我们还需要回到ListView中继续看。</p>
+<p>在ListView中搜索这个变量会发现，将其变为false还是同样的在layoutChildren中，并且是完成了对mActiveViews和mScrapViews的各种操作之后才变为false。<br>并且在makeAndView中使用了false时的值。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> View <span class="title">makeAndAddView</span><span class="params">(<span class="keyword">int</span> position, <span class="keyword">int</span> y, <span class="keyword">boolean</span> flow, <span class="keyword">int</span> childrenLeft, <span class="keyword">boolean</span> selected)</span> </span>&#123;</span><br><span class="line">    View child;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!mDataChanged) &#123;</span><br><span class="line">        <span class="comment">// Try to use an existing view for this position</span></span><br><span class="line">        child = mRecycler.getActiveView(position);</span><br><span class="line">        <span class="keyword">if</span> (child != <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="comment">// Found it -- we're using an existing child</span></span><br><span class="line">            <span class="comment">// This just needs to be positioned</span></span><br><span class="line">            setupChild(child, position, y, flow, childrenLeft, selected, <span class="keyword">true</span>);</span><br><span class="line"></span><br><span class="line">            <span class="keyword">return</span> child;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Make a new view for this position, or convert an unused view if possible</span></span><br><span class="line">    child = obtainView(position, mIsScrap);</span><br><span class="line">    <span class="comment">// This needs to be positioned and measured</span></span><br><span class="line">    setupChild(child, position, y, flow, childrenLeft, selected, mIsScrap[<span class="number">0</span>]);</span><br><span class="line">    <span class="keyword">return</span> child;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>makeAndAddView能够获取一个view并且把它添加到child的list中，并且返回了这个child，这个child可以是新view，也可以是没有使用过的view<br>convert过来的，或者说是从缓存中重用的view。<br>这当中有一个getActiveView方法，就是我们在之前提到的RecycleBin的第四个用法，也是在mDataChanged为false时一个处理方法。<br>好了，对mDataChanged的分析和“寻找”先到这里，我们接着看看RecycleBin的用法。  </p>
+<p>既然是我们之前讲过的处理流程，我们先看看最初的一个RecycleBin使用情况。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">addScrapView</span><span class="params">(View scrap, <span class="keyword">int</span> position)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">final</span> AbsListView.LayoutParams lp = (AbsListView.LayoutParams) scrap.getLayoutParams();</span><br><span class="line">    <span class="keyword">if</span> (lp == <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    lp.scrappedFromPosition = position;</span><br><span class="line">    ......</span><br><span class="line"></span><br><span class="line">    <span class="comment">//当一个view有瞬态时不用被废弃</span></span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">boolean</span> scrapHasTransientState = scrap.hasTransientState();</span><br><span class="line">    <span class="keyword">if</span> (scrapHasTransientState) &#123;</span><br><span class="line">        <span class="keyword">if</span> (mAdapter != <span class="keyword">null</span> &amp;&amp; mAdapterHasStableIds) &#123;</span><br><span class="line">            <span class="comment">// 如果adapter有稳定的ids，那就能对相同的数据进行view的重用</span></span><br><span class="line">            <span class="keyword">if</span> (mTransientStateViewsById == <span class="keyword">null</span>) &#123;</span><br><span class="line">                mTransientStateViewsById = <span class="keyword">new</span> LongSparseArray&lt;View&gt;();</span><br><span class="line">            &#125;</span><br><span class="line">            mTransientStateViewsById.put(lp.itemId, scrap);</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (!mDataChanged) &#123;</span><br><span class="line">            <span class="comment">// 如果绑定的数据没有改变，就能在旧位置重用view</span></span><br><span class="line">            <span class="keyword">if</span> (mTransientStateViews == <span class="keyword">null</span>) &#123;</span><br><span class="line">                mTransientStateViews = <span class="keyword">new</span> SparseArray&lt;View&gt;();</span><br><span class="line">            &#125;</span><br><span class="line">            mTransientStateViews.put(position, scrap);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// 其他情况只能移除view并且从头来过</span></span><br><span class="line">            <span class="keyword">if</span> (mSkippedScrap == <span class="keyword">null</span>) &#123;</span><br><span class="line">                mSkippedScrap = <span class="keyword">new</span> ArrayList&lt;View&gt;();</span><br><span class="line">            &#125;</span><br><span class="line">            mSkippedScrap.add(scrap);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;<span class="keyword">else</span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (mViewTypeCount == <span class="number">1</span>) &#123;</span><br><span class="line">            <span class="comment">//这里的mCurrentScrap就是mScrapViews[0]</span></span><br><span class="line">            mCurrentScrap.add(scrap);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            mScrapViews[viewType].add(scrap);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (mRecyclerListener != <span class="keyword">null</span>) &#123;</span><br><span class="line">            mRecyclerListener.onMovedToScrapHeap(scrap);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>我们可以看到，这里的逻辑还算很清晰，在关于view的重用的判断时，涉及到一个概念还是需要解释一下，就是view的瞬态。<br>View.hasTransientState()的代码就不贴了，主要是几个flag的运算，虽然就一行，但是需要前后联系，感兴趣的朋友可以去看看源码。<br>我们这里主要理解瞬态，当我们说一个view有瞬态时，我们指app无需再关心这个view的保存与恢复，注释指出一般用来播放动画或者记录选择的位置等相似的行为。<br>当一个view标记位有瞬态时，在RecycleBin中，就有可能不会降级到ScrapView,而是mTransientStateViews或者mTransientStateViewsById将其保存起来，以便于<br>后来的重用。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> SparseArray&lt;View&gt; mTransientStateViews;</span><br><span class="line"><span class="keyword">private</span> LongSparseArray&lt;View&gt; mTransientStateViewsById;</span><br></pre></td></tr></table></figure>
+<p>在RecycleBin中涉及到瞬态的存储结构是上述代码中的两个，其实就是SparseArray，一个存的是position的key，一个存的是id。  </p>
+<p>这里介绍了mTransientStateViews的写，我们再看看mTransientStateViews的读。这里的读也是读的SparseArray,虽然功能类似于HashMap,但是读数据时使用<br>的是valueAt方法。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">View <span class="title">getTransientStateView</span><span class="params">(<span class="keyword">int</span> position)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (mAdapter != <span class="keyword">null</span> &amp;&amp; mAdapterHasStableIds &amp;&amp; mTransientStateViewsById != <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">long</span> id = mAdapter.getItemId(position);</span><br><span class="line">        View result = mTransientStateViewsById.get(id);</span><br><span class="line">        mTransientStateViewsById.remove(id);</span><br><span class="line">        <span class="keyword">return</span> result;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (mTransientStateViews != <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">final</span> <span class="keyword">int</span> index = mTransientStateViews.indexOfKey(position);</span><br><span class="line">        <span class="keyword">if</span> (index &gt;= <span class="number">0</span>) &#123;</span><br><span class="line">            View result = mTransientStateViews.valueAt(index);</span><br><span class="line">            mTransientStateViews.removeAt(index);</span><br><span class="line">            <span class="keyword">return</span> result;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面这份代码就是用来获取瞬时态的view的，首先从mTransientStateViewsById中读取，如果没有就从mTransientStateViews中读取。<br>这个方法是属于RecycleBin的，但是这个是在哪里调用的呢？答案是AbsListView的obtainView方法。  </p>
+<p>这里是一个比较关键的地方了。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">View <span class="title">obtainView</span><span class="params">(<span class="keyword">int</span> position, <span class="keyword">boolean</span>[] isScrap)</span> </span>&#123;</span><br><span class="line">    ......</span><br><span class="line"></span><br><span class="line">    <span class="keyword">final</span> View transientView = mRecycler.getTransientStateView(position);</span><br><span class="line">    <span class="keyword">if</span> (transientView != <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">final</span> LayoutParams params = (LayoutParams) transientView.getLayoutParams();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// If the view type hasn't changed, attempt to re-bind the data.</span></span><br><span class="line">        <span class="keyword">if</span> (params.viewType == mAdapter.getItemViewType(position)) &#123;</span><br><span class="line">            <span class="keyword">final</span> View updatedView = mAdapter.getView(position, transientView, <span class="keyword">this</span>);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 重新绑定数据失败，就废弃获取到的view</span></span><br><span class="line">            <span class="keyword">if</span> (updatedView != transientView) &#123;</span><br><span class="line">                setItemViewLayoutParams(updatedView, position);</span><br><span class="line">                mRecycler.addScrapView(updatedView, position);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        ......</span><br><span class="line">        <span class="keyword">return</span> transientView;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">final</span> View scrapView = mRecycler.getScrapView(position);</span><br><span class="line">    <span class="keyword">final</span> View child = mAdapter.getView(position, scrapView, <span class="keyword">this</span>);</span><br><span class="line">    <span class="keyword">if</span> (scrapView != <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> (child != scrapView) &#123;</span><br><span class="line">            <span class="comment">// Failed to re-bind the data, return scrap to the heap.</span></span><br><span class="line">            mRecycler.addScrapView(scrapView, position);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            isScrap[<span class="number">0</span>] = <span class="keyword">true</span>;</span><br><span class="line"></span><br><span class="line">            child.dispatchFinishTemporaryDetach();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ......</span><br><span class="line"></span><br><span class="line">    setItemViewLayoutParams(child, position);</span><br><span class="line"></span><br><span class="line">    ......</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> child;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>阅读代码可以发现，在obtainView中，最重要的一个方法就是调用了adapter的getView方法，这个方法也是我们平常重写的方法，getView返回的是一个view。<br>而在对这个view的获取过程，有一个很明显的两层处理，首先就是尝试获取我们之前分析介绍的transientView，也就是拥有瞬时态的view，通过transientView<br>以完成复用。如果这一步走的失败了，也就是transientView为null时，或者说这个view并不拥有瞬时态，那么就从ScrapView中获取一个scrapView,这里可能要对<br>scrapView多做一些处理，我在上面都省略了，不影响逻辑大局，感兴趣的朋友可以去看看源码。最后返回的是scrapView。  </p>
+<p>getTransientStateView我们已经介绍过了，现在来看看失败之后的getScrapView。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">View <span class="title">getScrapView</span><span class="params">(<span class="keyword">int</span> position)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (mViewTypeCount == <span class="number">1</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> retrieveFromScrap(mCurrentScrap, position);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">final</span> <span class="keyword">int</span> whichScrap = mAdapter.getItemViewType(position);</span><br><span class="line">        <span class="keyword">if</span> (whichScrap &gt;= <span class="number">0</span> &amp;&amp; whichScrap &lt; mScrapViews.length) &#123;</span><br><span class="line">            <span class="keyword">return</span> retrieveFromScrap(mScrapViews[whichScrap], position);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">private</span> View <span class="title">retrieveFromScrap</span><span class="params">(ArrayList&lt;View&gt; scrapViews, <span class="keyword">int</span> position)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">int</span> size = scrapViews.size();</span><br><span class="line">    <span class="keyword">if</span> (size &gt; <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">// 检查对某一个position或者id是否还有一个对应的view</span></span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; size; i++) &#123;</span><br><span class="line">            <span class="keyword">final</span> View view = scrapViews.get(i);</span><br><span class="line">            <span class="keyword">final</span> AbsListView.LayoutParams params = (AbsListView.LayoutParams) view.getLayoutParams();</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> (mAdapterHasStableIds) &#123;</span><br><span class="line">                <span class="keyword">final</span> <span class="keyword">long</span> id = mAdapter.getItemId(position);</span><br><span class="line">                <span class="keyword">if</span> (id == params.itemId) &#123;</span><br><span class="line">                    <span class="keyword">return</span> scrapViews.remove(i);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> (params.scrappedFromPosition == position) &#123;</span><br><span class="line">                <span class="keyword">final</span> View scrap = scrapViews.remove(i);</span><br><span class="line">                clearAccessibilityFromScrap(scrap);</span><br><span class="line">                <span class="keyword">return</span> scrap;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">final</span> View scrap = scrapViews.remove(size - <span class="number">1</span>);</span><br><span class="line">        clearAccessibilityFromScrap(scrap);</span><br><span class="line">        <span class="keyword">return</span> scrap;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面这份代码还是写的很清楚了，根据不同的viewType来进行不同策略的取scrapView,但是实质上都是走到了retrieveFromScrap。<br>思路还是比较清晰，但是需要注意的是在get到scrapView后，在scrapView堆中这个view就会被移除掉。以便以后不停的循环往复的重用。  </p>
+<p>以上的分析都是在layoutChildren中判断数据改变后的过程，当数据没有改变时，会走到fillActiveViews方法。这个方法能够将AbsListView的所有子view都<br>装到activeViews中。代码很简单，就是一个for循环，将listView的所有子view一一存到activeViews中。  </p>
+<p>接着我们最初的分析，这些都走完之后，会执行recycleBin的removeSkippedScrap方法。还记得我们介绍的addScrapView方法吗，当一个view是有瞬时态的，但是<br>却没有一个保存到mTransientStateViewsById或者mTransientStateViews中时，会存在mSkippedScrap中。这是都会通过removeSkippedScrap全部清空。  </p>
+<p>在layoutChildren中，涉及到RecycleBin的最后还有一个方法就是scrapActiveViews。因为已经完成了children的布局layout位置的摆放等，所以这个时候需要刷新<br>缓存，scrapActiveViews这部分代码可能处理的过程有点多，但是最重要的一件事就是将现在mActiveViews还剩下的views都会移到mScrapViews中。  </p>
+<p>这个迁移过程也是和addScrapView的过程差不多。一开始是先对mActiveViews遍历，每次保存当前结点victim，并将mActiveViews[i]置空，然后对victim进行迁移<br>操作，如果符合条件就加到mTransientStateViewsById或者mTransientStateViews中，否则就加到mScrapViews中。  </p>
+<p>好了，至此在addScrapView中对RecycleBin进行的一系列操作就讲完了，我们看看下一步是什么。  </p>
+<p>ListView的makeAndAddView方法。<br>makeAndAddView的代码我们之前也贴过了，当判断数据没有发生改变时，会走到RecycleBin的getActiveView方法。<br>那我们来看看getActiveView。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">View <span class="title">getActiveView</span><span class="params">(<span class="keyword">int</span> position)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> index = position - mFirstActivePosition;</span><br><span class="line">    <span class="keyword">final</span> View[] activeViews = mActiveViews;</span><br><span class="line">    <span class="keyword">if</span> (index &gt;=<span class="number">0</span> &amp;&amp; index &lt; activeViews.length) &#123;</span><br><span class="line">        <span class="keyword">final</span> View match = activeViews[index];</span><br><span class="line">        activeViews[index] = <span class="keyword">null</span>;</span><br><span class="line">        <span class="keyword">return</span> match;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>getActiveView的代码就很简单了，根据丢过来的position计算出一个真实有效的index，然后从activeViews中获取相应的view。没什么可讲的。  </p>
+<p>ok，关于RecycleBin的几个主要方法和执行流程就介绍完了。  </p>
+<p>我们可以暂时回顾小结一下，实际上RecycleBin的主要结构就是三个，一个是activeView堆，结构是一个View数组，另一个是scrapView堆，结构是一个<br>ArrayList<view>数组。还有一个是transientViews，结构是SparseArray,主要通过Id或者position存取。<br>几个结构可以理解为层级不同，activeView比scrapView高一点，当触发了某种条件或者机制后，child的view就会从activieView中移到transientViews或者scrapView中进行缓存。<br>当ListView需要obtainView时，会先从有瞬时态的sparseArray中获取view，当失败时就会去scrapViews中获取view。<br>当然，这些过程又是和一个boolean变量mDataChanged进行配合的，具体的过程在上面的源码分析中已经解释过了，诸位可以回过去看看。<br>基本思路是在给子view布局时，如果数据没有发生改变，就使用当前已经存在ActiveViews的view。<br>在obtainView时，如果发生了改变，就addScrapView.否则就fill with activeView..  </view></p>
+<p>再次说到addScrapView,由于这是一个比较重要的方法，这里小结时我们也来看看哪些地方调用了addScrapView.<br>我们可以在ListView源码中搜索addScrapView看看。  </p>
+<ol>
+<li>onMeasure</li>
+<li>measureHeightOfChildren , <em>measure listView指定范围的高度， 在onMeasure中调用</em></li>
+<li>layoutChildren</li>
+<li>scrollListItemsBy , <em>以一定child数目滑动List，需要将滑出的child删掉，在最后添加view</em></li>
+</ol>
+<p>其实前三个中用到的addScrapView我们之前也已经都讲到了，addScrapView的实现过程也不算复杂，主要是和activeView以及有瞬态的view的配合使用。<br>第四个我们接下来讲一下。  </p>
+<p>既然了解了RecycleBin的缓存结构和基本方法后，我们来实战看看，在一个Listview滑动过程中，到底是怎么实现view的回收的吧。  </p>
+<p>现在考虑滑动一个ListView的情况，也就是scrollListItemsBy方法。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">scrollListItemsBy</span><span class="params">(<span class="keyword">int</span> amount)</span> </span>&#123;</span><br><span class="line">	...</span><br><span class="line">	<span class="keyword">final</span> AbsListView.RecycleBin recycleBin = mRecycler;</span><br><span class="line">	<span class="keyword">if</span> (amount &lt; <span class="number">0</span>) &#123; <span class="comment">//上滑</span></span><br><span class="line">		...</span><br><span class="line">		View last = getChildAt(numChildren - <span class="number">1</span>);</span><br><span class="line">		<span class="keyword">while</span> (last.getBottom() &lt; listBottom) &#123;</span><br><span class="line">			<span class="keyword">final</span> <span class="keyword">int</span> lastVisiblePosition = mFirstPosition + numChildren - <span class="number">1</span>;</span><br><span class="line">			<span class="keyword">if</span> (lastVisiblePosition &lt; mItemCount - <span class="number">1</span>) &#123;</span><br><span class="line">				last = addViewBelow(last, lastVisiblePosition);</span><br><span class="line">				numChildren++;</span><br><span class="line">			&#125;</span><br><span class="line">			...</span><br><span class="line">		&#125;</span><br><span class="line">		...</span><br><span class="line">		View first = getChildAt(<span class="number">0</span>);</span><br><span class="line">		<span class="keyword">while</span> (first.getBottom() &lt; listTop) &#123;</span><br><span class="line">			AbsListView.LayoutParams layoutParams = (LayoutParams) first.getLayoutParams();</span><br><span class="line">			<span class="keyword">if</span> (recycleBin.shouldRecycleViewType(layoutParams.viewType)) &#123;</span><br><span class="line">				recycleBin.addScrapView(first, mFirstPosition);</span><br><span class="line">			&#125;</span><br><span class="line">			...</span><br><span class="line">		&#125;</span><br><span class="line">		...</span><br><span class="line">	&#125;<span class="keyword">else</span>&#123; <span class="comment">//往下滑</span></span><br><span class="line">		...</span><br><span class="line">		View last = getChildAt(lastIndex);</span><br><span class="line">		...</span><br><span class="line">		<span class="keyword">if</span> (recycleBin.shouldRecycleViewType(layoutParams.viewType)) &#123;</span><br><span class="line">			recycleBin.addScrapView(last, mFirstPosition + lastIndex);</span><br><span class="line">		&#125;</span><br><span class="line">		...</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>可以看到，每次ListView的滑动事件要将一个view滑出屏幕时，会将头部的或者尾部的（视方向而定）childView通过addScrapView缓存起来，<br>缓存的流程就是我们一开始分析的了，先保存有瞬时态的view，然后视情况存到scrapViews中。  </p>
+<p>等到每次obtainView时再依序从缓存的view中取出来。  </p>
+<p>这样就完成了一个滑动的缓存与回收。</p>
+<p>好了，关于ListView的回收机制到这里就讲的差不多了，本质上就是对AbsListView的内部类RecycleBin的操作。<br>当我们弄懂了这个机制，才能更好的思考更多的问题。  </p>
+<p>例如，最后我问大家一个问题：  </p>
+<p>根据我之前所讲的，当一个ListView的有若干个viewType, 当滑出的view和滑入添加的view的type不一样，比如说滑出了一个TextView的item,<br>滑入了一个ImageView的Item, 那这种情况下还能复用刚才的view吗？</p>
+
+      
+    </div>
+    
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Listview/">Listview</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/android/">android</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/android-view/">android view</a></li></ul>
+	</div>
+
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+    
+  </div>
+  
+</article>
+
+
+
+
+
+
+
+
+
+  
     <article id="post-android的view到底是怎么绘制出来的" class="article article-type-post" itemscope itemprop="blogPost">
   
     <div class="article-meta">
@@ -202,7 +334,7 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2016/04/18/android的view到底是怎么绘制出来的/">Android的view到底是怎么绘制出来的，以及invalidate和requestLayout是怎么发生的</a>
+      <a class="article-title" href="/2016/04/18/android的view到底是怎么绘制出来的/">Android的view到底是怎么绘制出来的</a>
     </h1>
   
 
@@ -340,7 +472,7 @@
       
       
 	<div class="article-tag tagcloud">
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/android/">android</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/view源码/">view源码</a></li></ul>
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/android/">android</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/sdk/">sdk</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/view源码/">view源码</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/view绘制/">view绘制</a></li></ul>
 	</div>
 
       
@@ -507,7 +639,7 @@
       
       
 	<div class="article-tag tagcloud">
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java/">java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java-juc/">java juc</a></li></ul>
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java/">java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java-juc/">java juc</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/同步/">同步</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/锁/">锁</a></li></ul>
 	</div>
 
       
@@ -606,7 +738,7 @@
       
       
 	<div class="article-tag tagcloud">
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java-juc/">java juc</a></li></ul>
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java-juc/">java juc</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java并发/">java并发</a></li></ul>
 	</div>
 
       
@@ -698,7 +830,7 @@
       
       
 	<div class="article-tag tagcloud">
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java-juc/">java juc</a></li></ul>
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java-juc/">java juc</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java并发/">java并发</a></li></ul>
 	</div>
 
       
@@ -788,7 +920,7 @@
       
       
 	<div class="article-tag tagcloud">
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java-juc/">java juc</a></li></ul>
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java-juc/">java juc</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java并发/">java并发</a></li></ul>
 	</div>
 
       
@@ -943,7 +1075,7 @@
       
       
 	<div class="article-tag tagcloud">
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/android/">android</a></li></ul>
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/android/">android</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/gc/">gc</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/垃圾回收/">垃圾回收</a></li></ul>
 	</div>
 
       
@@ -1127,7 +1259,7 @@
       
       
 	<div class="article-tag tagcloud">
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/android/">android</a></li></ul>
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/android/">android</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/异步/">异步</a></li></ul>
 	</div>
 
       
@@ -1149,65 +1281,10 @@
 
 
   
-    <article id="post-曹楼登山" class="article article-type-post" itemscope itemprop="blogPost">
   
-    <div class="article-meta">
-      <a href="/2015/09/22/曹楼登山/" class="article-date">
-  	<time datetime="2015-09-22T01:51:17.000Z" itemprop="datePublished">2015-09-22</time>
-</a>
-    </div>
-  
-  <div class="article-inner">
-    
-      <input type="hidden" class="isFancy" />
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2015/09/22/曹楼登山/">浪淘沙--曹楼登山</a>
-    </h1>
-  
-
-      </header>
-      
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-      <p>##浪淘沙</p>
-<p>晚来晴碧空，秋意渐浓。老和山下曹楼东，二十五史读着众，有那东风。<br>青山掩梵钟，北高峰通。玉泉远眺双目空，西子侧卧秋心重，谁顾妆容。  </p>
-<p>最近好像是爱上了爬山，在玉泉生活还是幸福，往前临西湖水，往后靠老和山。<br>是进亦景，退亦景啊。</p>
-
-      
-    </div>
-    
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thoughts/">thoughts</a></li></ul>
-	</div>
-
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-    
-  </div>
-  
-</article>
-
-
-
-
-
-
-
-
-
-  
+    <nav id="page-nav">
+      <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="extend next" rel="next" href="/page/2/">Next &raquo;</a>
+    </nav>
   
 </div>
       <footer id="footer">
