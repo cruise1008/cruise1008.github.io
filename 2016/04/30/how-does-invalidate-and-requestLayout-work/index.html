@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" >
+  <title>invalidate和requestLayout流程认识 | cruise yang</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="我们在之前已经分析了Android中view的绘制过程，知道了一个view是如何从父view往子view一层层的递归下去完成测量、布局和绘制的。知道这些已经能完成基本的简单的自定义的view的开发了，但是在实际开发中我们往往会碰到或者使用两个同样很常见的方法—— invalidate和requestLayout.  
+invalidate山不过来我就过去。话不多说，我们看看源码。  
+123456">
+<meta property="og:type" content="article">
+<meta property="og:title" content="invalidate和requestLayout流程认识">
+<meta property="og:url" content="http://yoursite.com/2016/04/30/how-does-invalidate-and-requestLayout-work/index.html">
+<meta property="og:site_name" content="cruise yang">
+<meta property="og:description" content="我们在之前已经分析了Android中view的绘制过程，知道了一个view是如何从父view往子view一层层的递归下去完成测量、布局和绘制的。知道这些已经能完成基本的简单的自定义的view的开发了，但是在实际开发中我们往往会碰到或者使用两个同样很常见的方法—— invalidate和requestLayout.  
+invalidate山不过来我就过去。话不多说，我们看看源码。  
+123456">
+<meta property="og:updated_time" content="2016-05-06T13:56:09.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="invalidate和requestLayout流程认识">
+<meta name="twitter:description" content="我们在之前已经分析了Android中view的绘制过程，知道了一个view是如何从父view往子view一层层的递归下去完成测量、布局和绘制的。知道这些已经能完成基本的简单的自定义的view的开发了，但是在实际开发中我们往往会碰到或者使用两个同样很常见的方法—— invalidate和requestLayout.  
+invalidate山不过来我就过去。话不多说，我们看看源码。  
+123456">
+  
+    <link rel="alternative" href="/atom.xml" title="cruise yang" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div class="left-col">
+    <div class="overlay"></div>
+<div class="intrude-less">
+	<header id="header" class="inner">
+		<a href="/" class="profilepic">
+			
+			<img lazy-src="https://raw.githubusercontent.com/cruise1008/cruise1008.github.io/master/img/avatar.jpg" class="js-avatar">
+			
+		</a>
+
+		<hgroup>
+		  <h1 class="header-author"><a href="/">Cruise Yang</a></h1>
+		</hgroup>
+
+		
+		<p class="header-subtitle">纸上得来终觉浅，绝知此事要躬行</p>
+		
+
+		
+			<div class="switch-btn">
+				<div class="icon">
+					<div class="icon-ctn">
+						<div class="icon-wrap icon-house" data-idx="0">
+							<div class="birdhouse"></div>
+							<div class="birdhouse_holes"></div>
+						</div>
+						<div class="icon-wrap icon-ribbon hide" data-idx="1">
+							<div class="ribbon"></div>
+						</div>
+						
+						
+						<div class="icon-wrap icon-me hide" data-idx="3">
+							<div class="user"></div>
+							<div class="shoulder"></div>
+						</div>
+						
+					</div>
+					
+				</div>
+				<div class="tips-box hide">
+					<div class="tips-arrow"></div>
+					<ul class="tips-inner">
+						<li>Menu</li>
+						<li>Tags</li>
+						
+						
+						<li>About</li>
+						
+					</ul>
+				</div>
+			</div>
+		
+
+		<div class="switch-area">
+			<div class="switch-wrap">
+				<section class="switch-part switch-part1">
+					<nav class="header-menu">
+						<ul>
+						
+							<li><a href="/">主页</a></li>
+				        
+							<li><a href="/archives">文章</a></li>
+				        
+							<li><a href="/tags/thoughts">随笔</a></li>
+				        
+							<li><a href="/about">关于</a></li>
+				        
+						</ul>
+					</nav>
+					<nav class="header-nav">
+						<div class="social">
+							
+								<a class="github" target="_blank" href="https://github.com/cruise1008" title="github">github</a>
+					        
+								<a class="weibo" target="_blank" href="http://weibo.com/cruise" title="weibo">weibo</a>
+					        
+								<a class="zhihu" target="_blank" href="https://www.zhihu.com/people/cruiseyoung" title="zhihu">zhihu</a>
+					        
+								<a class="douban" target="_blank" href="https://www.douban.com/people/cruiseyoung/" title="douban">douban</a>
+					        
+						</div>
+					</nav>
+				</section>
+				
+				
+				<section class="switch-part switch-part2">
+					<div class="widget tagcloud" id="js-tagcloud">
+						<a href="/tags/Listview/" style="font-size: 10px;">Listview</a> <a href="/tags/android/" style="font-size: 20px;">android</a> <a href="/tags/android-View/" style="font-size: 10px;">android View</a> <a href="/tags/android-view/" style="font-size: 10px;">android view</a> <a href="/tags/android-源码/" style="font-size: 10px;">android 源码</a> <a href="/tags/gc/" style="font-size: 10px;">gc</a> <a href="/tags/java/" style="font-size: 12.5px;">java</a> <a href="/tags/java-juc/" style="font-size: 17.5px;">java juc</a> <a href="/tags/java并发/" style="font-size: 15px;">java并发</a> <a href="/tags/sdk/" style="font-size: 10px;">sdk</a> <a href="/tags/thoughts/" style="font-size: 10px;">thoughts</a> <a href="/tags/view源码/" style="font-size: 10px;">view源码</a> <a href="/tags/view绘制/" style="font-size: 10px;">view绘制</a> <a href="/tags/同步/" style="font-size: 10px;">同步</a> <a href="/tags/垃圾回收/" style="font-size: 10px;">垃圾回收</a> <a href="/tags/异步/" style="font-size: 10px;">异步</a> <a href="/tags/锁/" style="font-size: 10px;">锁</a> <a href="/tags/随笔/" style="font-size: 10px;">随笔</a>
+					</div>
+				</section>
+				
+				
+				
+
+				
+				
+				<section class="switch-part switch-part3">
+				
+					<div id="js-aboutme">程序猿/足球狗/文艺工科男</div>
+				</section>
+				
+			</div>
+		</div>
+	</header>				
+</div>
+
+    </div>
+    <div class="mid-col">
+      <nav id="mobile-nav">
+  	<div class="overlay">
+  		<div class="slider-trigger"></div>
+  		<h1 class="header-author js-mobile-header hide">Cruise Yang</h1>
+  	</div>
+	<div class="intrude-less">
+		<header id="header" class="inner">
+			<div class="profilepic">
+			
+				<img lazy-src="https://raw.githubusercontent.com/cruise1008/cruise1008.github.io/master/img/avatar.jpg" class="js-avatar">
+			
+			</div>
+			<hgroup>
+			  <h1 class="header-author">Cruise Yang</h1>
+			</hgroup>
+			
+			<p class="header-subtitle">纸上得来终觉浅，绝知此事要躬行</p>
+			
+			<nav class="header-menu">
+				<ul>
+				
+					<li><a href="/">主页</a></li>
+		        
+					<li><a href="/archives">文章</a></li>
+		        
+					<li><a href="/tags/thoughts">随笔</a></li>
+		        
+					<li><a href="/about">关于</a></li>
+		        
+		        <div class="clearfix"></div>
+				</ul>
+			</nav>
+			<nav class="header-nav">
+				<div class="social">
+					
+						<a class="github" target="_blank" href="https://github.com/cruise1008" title="github">github</a>
+			        
+						<a class="weibo" target="_blank" href="http://weibo.com/cruise" title="weibo">weibo</a>
+			        
+						<a class="zhihu" target="_blank" href="https://www.zhihu.com/people/cruiseyoung" title="zhihu">zhihu</a>
+			        
+						<a class="douban" target="_blank" href="https://www.douban.com/people/cruiseyoung/" title="douban">douban</a>
+			        
+				</div>
+			</nav>
+		</header>				
+	</div>
+</nav>
+
+      <div class="body-wrap"><article id="post-how-does-invalidate-and-requestLayout-work" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a href="/2016/04/30/how-does-invalidate-and-requestLayout-work/" class="article-date">
+  	<time datetime="2016-04-30T07:42:21.000Z" itemprop="datePublished">2016-04-30</time>
+</a>
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      invalidate和requestLayout流程认识
+    </h1>
+  
+
+      </header>
+      
+      <div class="article-info article-info-post">
+        
+	<div class="article-tag tagcloud">
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/android/">android</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/android-View/">android View</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/android-源码/">android 源码</a></li></ul>
+	</div>
+
+        
+
+        <div class="clearfix"></div>
+      </div>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+      <p>我们在之前已经分析了Android中view的绘制过程，知道了一个view是如何从父view往子view一层层的递归下去完成测量、布局和绘制的。<br>知道这些已经能完成基本的简单的自定义的view的开发了，但是在实际开发中我们往往会碰到或者使用两个同样很常见的方法—— invalidate和requestLayout.  </p>
+<h1 id="invalidate"><a href="#invalidate" class="headerlink" title="invalidate"></a>invalidate</h1><p>山不过来我就过去。话不多说，我们看看源码。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span><br><span class="line">    * Invalidate the whole view. If the view is visible,</span><br><span class="line">    * &#123;<span class="doctag">@link</span> #onDraw(android.graphics.Canvas)&#125; will be called at some point in</span><br><span class="line">    * the future.</span><br><span class="line">    * &lt;p&gt;</span><br><span class="line">    * This must be called from a UI thread. To call from a non-UI thread, call</span><br><span class="line">    * &#123;<span class="doctag">@link</span> #postInvalidate()&#125;.</span><br><span class="line">    */</span></span><br><span class="line">   <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">invalidate</span><span class="params">()</span> </span>&#123;</span><br><span class="line">       invalidate(<span class="keyword">true</span>);</span><br><span class="line">   &#125;</span><br><span class="line"></span><br><span class="line">   <span class="comment">/**</span><br><span class="line">    * This is where the invalidate() work actually happens. A full invalidate()</span><br><span class="line">    * causes the drawing cache to be invalidated, but this function can be</span><br><span class="line">    * called with invalidateCache set to false to skip that invalidation step</span><br><span class="line">    * for cases that do not need it (for example, a component that remains at</span><br><span class="line">    * the same dimensions with the same content).</span><br><span class="line">    *</span><br><span class="line">    * <span class="doctag">@param</span> invalidateCache Whether the drawing cache for this view should be</span><br><span class="line">    *            invalidated as well. This is usually true for a full</span><br><span class="line">    *            invalidate, but may be set to false if the View's contents or</span><br><span class="line">    *            dimensions have not changed.</span><br><span class="line">    */</span></span><br><span class="line">   <span class="function"><span class="keyword">void</span> <span class="title">invalidate</span><span class="params">(<span class="keyword">boolean</span> invalidateCache)</span> </span>&#123;</span><br><span class="line">       invalidateInternal(<span class="number">0</span>, <span class="number">0</span>, mRight - mLeft, mBottom - mTop, invalidateCache, <span class="keyword">true</span>);</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+<p>这段代码还是很简单，注释也说的很清楚，只需要注意的是这个方法只能在主线程中调用，invalidate方法最终都是调用了invalidateInternal方法。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">invalidateInternal</span><span class="params">(<span class="keyword">int</span> l, <span class="keyword">int</span> t, <span class="keyword">int</span> r, <span class="keyword">int</span> b, <span class="keyword">boolean</span> invalidateCache,</span><br><span class="line">           <span class="keyword">boolean</span> fullInvalidate)</span> </span>&#123;</span><br><span class="line">       ...</span><br><span class="line"></span><br><span class="line">       <span class="keyword">if</span> ((mPrivateFlags &amp; (PFLAG_DRAWN | PFLAG_HAS_BOUNDS)) == (PFLAG_DRAWN | PFLAG_HAS_BOUNDS)</span><br><span class="line">               || (invalidateCache &amp;&amp; (mPrivateFlags &amp; PFLAG_DRAWING_CACHE_VALID) == PFLAG_DRAWING_CACHE_VALID)</span><br><span class="line">               || (mPrivateFlags &amp; PFLAG_INVALIDATED) != PFLAG_INVALIDATED</span><br><span class="line">               || (fullInvalidate &amp;&amp; isOpaque() != mLastIsOpaque)) &#123;</span><br><span class="line">           <span class="keyword">if</span> (fullInvalidate) &#123;</span><br><span class="line">               mLastIsOpaque = isOpaque();</span><br><span class="line">               mPrivateFlags &amp;= ~PFLAG_DRAWN;</span><br><span class="line">           &#125;</span><br><span class="line"></span><br><span class="line">           mPrivateFlags |= PFLAG_DIRTY;</span><br><span class="line"></span><br><span class="line">           <span class="keyword">if</span> (invalidateCache) &#123;</span><br><span class="line">               mPrivateFlags |= PFLAG_INVALIDATED;</span><br><span class="line">               mPrivateFlags &amp;= ~PFLAG_DRAWING_CACHE_VALID;</span><br><span class="line">           &#125;</span><br><span class="line"></span><br><span class="line">           <span class="comment">// Propagate the damage rectangle to the parent view.</span></span><br><span class="line">           <span class="keyword">final</span> AttachInfo ai = mAttachInfo;</span><br><span class="line">           <span class="keyword">final</span> ViewParent p = mParent;</span><br><span class="line">           <span class="keyword">if</span> (p != <span class="keyword">null</span> &amp;&amp; ai != <span class="keyword">null</span> &amp;&amp; l &lt; r &amp;&amp; t &lt; b) &#123;</span><br><span class="line">               <span class="keyword">final</span> Rect damage = ai.mTmpInvalRect;</span><br><span class="line">               damage.set(l, t, r, b);</span><br><span class="line">               <span class="comment">//往父view传递，调用父view的invalidateChild方法</span></span><br><span class="line">               p.invalidateChild(<span class="keyword">this</span>, damage);</span><br><span class="line">           &#125;</span><br><span class="line"></span><br><span class="line">           ...</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+<p>从上述代码中可以发现，View方法中的invalidateInternal实际上是将刷新区域往上传给了父viewGroup的invalidateChild方法，也就是一个从下往上从子到父的一个回溯过程，在每一层view或者viewGroup中都对自己的显示区域和传过来的刷新的 damage区域Rect做一个交集。我们可以看看ViewGroup中的invalidateChild方法。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span><br><span class="line"> * Don't call or override this method. It is used for the implementation of</span><br><span class="line"> * the view hierarchy.</span><br><span class="line"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title">invalidateChild</span><span class="params">(View child, <span class="keyword">final</span> Rect dirty)</span> </span>&#123;</span><br><span class="line">    ViewParent parent = <span class="keyword">this</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">final</span> AttachInfo attachInfo = mAttachInfo;</span><br><span class="line">    <span class="keyword">if</span> (attachInfo != <span class="keyword">null</span>) &#123;</span><br><span class="line">        ...</span><br><span class="line">        <span class="keyword">if</span> (!childMatrix.isIdentity() ||</span><br><span class="line">                (mGroupFlags &amp; ViewGroup.FLAG_SUPPORT_STATIC_TRANSFORMATIONS) != <span class="number">0</span>) &#123;</span><br><span class="line">            RectF boundingRect = attachInfo.mTmpTransformRect;</span><br><span class="line">            boundingRect.set(dirty);</span><br><span class="line">            ...</span><br><span class="line">            transformMatrix.mapRect(boundingRect);</span><br><span class="line">            dirty.set((<span class="keyword">int</span>) (boundingRect.left - <span class="number">0.5f</span>),</span><br><span class="line">                    (<span class="keyword">int</span>) (boundingRect.top - <span class="number">0.5f</span>),</span><br><span class="line">                    (<span class="keyword">int</span>) (boundingRect.right + <span class="number">0.5f</span>),</span><br><span class="line">                    (<span class="keyword">int</span>) (boundingRect.bottom + <span class="number">0.5f</span>));</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        do &#123;</span><br><span class="line">            View view = <span class="keyword">null</span>;</span><br><span class="line">            <span class="keyword">if</span> (parent <span class="keyword">instanceof</span> View) &#123;</span><br><span class="line">                view = (View) parent;</span><br><span class="line">            &#125;</span><br><span class="line">            ...</span><br><span class="line"></span><br><span class="line">            parent = parent.invalidateChildInParent(location, dirty);</span><br><span class="line">            <span class="keyword">if</span> (view != <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="comment">// Account for transform on current parent</span></span><br><span class="line">                Matrix m = view.getMatrix();</span><br><span class="line">                <span class="keyword">if</span> (!m.isIdentity()) &#123;</span><br><span class="line">                    RectF boundingRect = attachInfo.mTmpTransformRect;</span><br><span class="line">                    boundingRect.set(dirty);</span><br><span class="line">                    m.mapRect(boundingRect);</span><br><span class="line">                    dirty.set((<span class="keyword">int</span>) (boundingRect.left - <span class="number">0.5f</span>),</span><br><span class="line">                            (<span class="keyword">int</span>) (boundingRect.top - <span class="number">0.5f</span>),</span><br><span class="line">                            (<span class="keyword">int</span>) (boundingRect.right + <span class="number">0.5f</span>),</span><br><span class="line">                            (<span class="keyword">int</span>) (boundingRect.bottom + <span class="number">0.5f</span>));</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">while</span> (parent != <span class="keyword">null</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>其中最重要的就是第30行，<strong>parent = parent.invalidateChildInParent(location, dirty)</strong>，<br>不停地往上递归调用invalidateChildInParent方法，直到顶层view也即是ViewRootImpl.   </p>
+<p>我们看看ViewGroup的invalidateChildInParent方法。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span><br><span class="line"> * Don't call or override this method. It is used for the implementation of</span><br><span class="line"> * the view hierarchy.</span><br><span class="line"> *</span><br><span class="line"> * This implementation returns null if this ViewGroup does not have a parent,</span><br><span class="line"> * if this ViewGroup is already fully invalidated or if the dirty rectangle</span><br><span class="line"> * does not intersect with this ViewGroup's bounds.</span><br><span class="line"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> ViewParent <span class="title">invalidateChildInParent</span><span class="params">(<span class="keyword">final</span> <span class="keyword">int</span>[] location, <span class="keyword">final</span> Rect dirty)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> ((mPrivateFlags &amp; PFLAG_DRAWN) == PFLAG_DRAWN ||</span><br><span class="line">            (mPrivateFlags &amp; PFLAG_DRAWING_CACHE_VALID) == PFLAG_DRAWING_CACHE_VALID) &#123;</span><br><span class="line">        <span class="keyword">if</span> ((mGroupFlags &amp; (FLAG_OPTIMIZE_INVALIDATE | FLAG_ANIMATION_DONE)) !=</span><br><span class="line">                    FLAG_OPTIMIZE_INVALIDATE) &#123;</span><br><span class="line">            dirty.offset(location[CHILD_LEFT_INDEX] - mScrollX,</span><br><span class="line">                    location[CHILD_TOP_INDEX] - mScrollY);</span><br><span class="line">            <span class="keyword">if</span> ((mGroupFlags &amp; FLAG_CLIP_CHILDREN) == <span class="number">0</span>) &#123;</span><br><span class="line">                dirty.union(<span class="number">0</span>, <span class="number">0</span>, mRight - mLeft, mBottom - mTop);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">final</span> <span class="keyword">int</span> left = mLeft;</span><br><span class="line">            <span class="keyword">final</span> <span class="keyword">int</span> top = mTop;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> ((mGroupFlags &amp; FLAG_CLIP_CHILDREN) == FLAG_CLIP_CHILDREN) &#123;</span><br><span class="line">                <span class="keyword">if</span> (!dirty.intersect(<span class="number">0</span>, <span class="number">0</span>, mRight - left, mBottom - top)) &#123;</span><br><span class="line">                    dirty.setEmpty();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            mPrivateFlags &amp;= ~PFLAG_DRAWING_CACHE_VALID;</span><br><span class="line"></span><br><span class="line">            location[CHILD_LEFT_INDEX] = left;</span><br><span class="line">            location[CHILD_TOP_INDEX] = top;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> (mLayerType != LAYER_TYPE_NONE) &#123;</span><br><span class="line">                mPrivateFlags |= PFLAG_INVALIDATED;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">return</span> mParent;</span><br><span class="line"></span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            mPrivateFlags &amp;= ~PFLAG_DRAWN &amp; ~PFLAG_DRAWING_CACHE_VALID;</span><br><span class="line"></span><br><span class="line">            location[CHILD_LEFT_INDEX] = mLeft;</span><br><span class="line">            location[CHILD_TOP_INDEX] = mTop;</span><br><span class="line">            <span class="keyword">if</span> ((mGroupFlags &amp; FLAG_CLIP_CHILDREN) == FLAG_CLIP_CHILDREN) &#123;</span><br><span class="line">                dirty.set(<span class="number">0</span>, <span class="number">0</span>, mRight - mLeft, mBottom - mTop);</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="comment">// in case the dirty rect extends outside the bounds of this container</span></span><br><span class="line">                dirty.union(<span class="number">0</span>, <span class="number">0</span>, mRight - mLeft, mBottom - mTop);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> (mLayerType != LAYER_TYPE_NONE) &#123;</span><br><span class="line">                mPrivateFlags |= PFLAG_INVALIDATED;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">return</span> mParent;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>我们会发现其实这段代码主要是对传过来的Rect进行了运算，取了交集，对damage和自己的显示区域，返回的还是parent。  </p>
+<p>之前也讲到了，在invalidateChild中层层递归往父viewGroup回溯，直到ViewRootImpl才会停止，那我们看看ViewRootImpl中发生了什么。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> ViewParent <span class="title">invalidateChildInParent</span><span class="params">(<span class="keyword">int</span>[] location, Rect dirty)</span> </span>&#123;</span><br><span class="line">    checkThread();</span><br><span class="line">    ...</span><br><span class="line">    <span class="keyword">if</span> (dirty == <span class="keyword">null</span>) &#123;</span><br><span class="line">        invalidate();</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (dirty.isEmpty() &amp;&amp; !mIsAnimating) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    invalidateRectOnScreen(dirty);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>最关键的一步在invalidateRectOnScreen中。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">invalidateRectOnScreen</span><span class="params">(Rect dirty)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">final</span> Rect localDirty = mDirty;</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Add the new dirty rect to the current one</span></span><br><span class="line">    localDirty.union(dirty.left, dirty.top, dirty.right, dirty.bottom);</span><br><span class="line">    <span class="comment">// Intersect with the bounds of the window to skip</span></span><br><span class="line">    <span class="comment">// updates that lie outside of the visible region</span></span><br><span class="line">    </span><br><span class="line">    ...</span><br><span class="line">    <span class="keyword">if</span> (!mWillDrawSoon &amp;&amp; (intersected || mIsAnimating)) &#123;</span><br><span class="line">        scheduleTraversals();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里需要解释一下的就是，invalidateChildInParent中返回的是null。这个结果在ViewGroup中分析时有用到，就结束了自子view到父view的递归过程。<br>因为invalidateChild中的do-while循环会终止。  </p>
+<p>往下我们看到在ViewRootImpl中调用了scheduleTraversals方法。这一步就是整个invalidate的关键执行步骤了。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">scheduleTraversals</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (!mTraversalScheduled) &#123;</span><br><span class="line">        mTraversalScheduled = <span class="keyword">true</span>;</span><br><span class="line">        mTraversalBarrier = mHandler.getLooper().getQueue().postSyncBarrier();</span><br><span class="line">        mChoreographer.postCallback(</span><br><span class="line">                Choreographer.CALLBACK_TRAVERSAL, mTraversalRunnable, <span class="keyword">null</span>);</span><br><span class="line">        <span class="keyword">if</span> (!mUnbufferedInputDispatch) &#123;</span><br><span class="line">            scheduleConsumeBatchedInput();</span><br><span class="line">        &#125;</span><br><span class="line">        notifyRendererOfFramePending();</span><br><span class="line">        pokeDrawLockIfNeeded();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>原来是scheduleTraversals向handler发送了一个异步消息，会执行TraversalRunnable，这个TraversalRunnable的run方法中，执行的就是<br>doTraversal方法。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">doTraversal</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (mTraversalScheduled) &#123;</span><br><span class="line">        mTraversalScheduled = <span class="keyword">false</span>;</span><br><span class="line">        mHandler.getLooper().getQueue().removeSyncBarrier(mTraversalBarrier);</span><br><span class="line"></span><br><span class="line">        ...</span><br><span class="line"></span><br><span class="line">        performTraversals();</span><br><span class="line"></span><br><span class="line">        ...</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>看，doTraversal最后走到了我们熟悉的performTraversals了，performTraversals就是整个View树开始绘制的起始地方，所以说<strong>View调用invalidate方法的实质是层层回溯上传到父view，直到传递到ViewRootImpl后调用scheduleTraversals方法，然后整个View树开始<br>重新按照<a href="http://cruise1008.github.io/2016/04/18/android%E7%9A%84view%E5%88%B0%E5%BA%95%E6%98%AF%E6%80%8E%E4%B9%88%E7%BB%98%E5%88%B6%E5%87%BA%E6%9D%A5%E7%9A%84/" target="_blank" rel="external">Android view的绘制过程分析</a>分析的View绘制流程再来进行view的重绘任务。</strong>  </p>
+<h1 id="postInvalidate"><a href="#postInvalidate" class="headerlink" title="postInvalidate"></a>postInvalidate</h1><p>除了常见的invalidate外，我们还经常碰到postInvalidate，其实关于这个的特点我们在一开始有提到过invalidate只能在UI线程进行调用，所以如果想要在非主线程中进行<br>invalidate的效果，就需要使用postInvalidate。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span><br><span class="line"> * &lt;p&gt;Cause an invalidate to happen on a subsequent cycle through the event loop.</span><br><span class="line"> * Use this to invalidate the View from a non-UI thread.&lt;/p&gt;</span><br><span class="line"> *</span><br><span class="line"> * &lt;p&gt;This method can be invoked from outside of the UI thread</span><br><span class="line"> * only when this View is attached to a window.&lt;/p&gt;</span><br><span class="line"> *</span><br><span class="line"> * <span class="doctag">@see</span> #invalidate()</span><br><span class="line"> * <span class="doctag">@see</span> #postInvalidateDelayed(long)</span><br><span class="line"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">postInvalidate</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    postInvalidateDelayed(<span class="number">0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>我们可以看到这里其实调用了以下的方法：  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span><br><span class="line"> * &lt;p&gt;Cause an invalidate to happen on a subsequent cycle through the event</span><br><span class="line"> * loop. Waits for the specified amount of time.&lt;/p&gt;</span><br><span class="line"> *</span><br><span class="line"> * &lt;p&gt;This method can be invoked from outside of the UI thread</span><br><span class="line"> * only when this View is attached to a window.&lt;/p&gt;</span><br><span class="line"> *</span><br><span class="line"> * <span class="doctag">@param</span> delayMilliseconds the duration in milliseconds to delay the</span><br><span class="line"> *         invalidation by</span><br><span class="line"> *</span><br><span class="line"> * <span class="doctag">@see</span> #invalidate()</span><br><span class="line"> * <span class="doctag">@see</span> #postInvalidate()</span><br><span class="line"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">postInvalidateDelayed</span><span class="params">(<span class="keyword">long</span> delayMilliseconds)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// We try only with the AttachInfo because there's no point in invalidating</span></span><br><span class="line">    <span class="comment">// if we are not attached to our window</span></span><br><span class="line">    <span class="keyword">final</span> AttachInfo attachInfo = mAttachInfo;</span><br><span class="line">    <span class="keyword">if</span> (attachInfo != <span class="keyword">null</span>) &#123;</span><br><span class="line">        attachInfo.mViewRootImpl.dispatchInvalidateDelayed(<span class="keyword">this</span>, delayMilliseconds);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>可以发现实际上是调用了ViewRootImpl.dispatchInvalidateDelayed方法，那么我们来看看这个方法：  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">dispatchInvalidateDelayed</span><span class="params">(View view, <span class="keyword">long</span> delayMilliseconds)</span> </span>&#123;</span><br><span class="line">    Message msg = mHandler.obtainMessage(MSG_INVALIDATE, view);</span><br><span class="line">    mHandler.sendMessageDelayed(msg, delayMilliseconds);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里也就是ViewRootImpl的handler发送了一条消息MSG_INVALIDATE，注意这里已经涉及到线程间消息传递了。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">handleMessage</span><span class="params">(Message msg)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">switch</span> (msg.what) &#123;</span><br><span class="line">    <span class="keyword">case</span> MSG_INVALIDATE:</span><br><span class="line">        ((View) msg.obj).invalidate();</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    ...</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>到这里为止，postInvalidate的实质就是在UI Thread中调运了View的invalidate方法，那接下来View的invalidate方法就不再重复说了，上面已经分析过了。  </p>
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>关于二者的具体流程，上面已经写的很详细了，对于invalidate，就是从view开始一层层往上层调用，直到ViewRootImpl，然后重新绘制一遍。<br>对于postInvalidate，就是在viewRootImpl中给handler发送了一个请求重绘的消息，然后接着走invalidate，只是这个起始是可以在非UI线程上进行。  </p>
+<p>需要注意的是，invalidate和postInvalidate方法请求重绘View，只会调用draw方法，如果View大小没有发生变化就不会再调用layout，并且只绘制那些需要重绘的View的脏<br>的Rect，也就是谁调用，重绘谁。  </p>
+<p>在平常开发中，可能会有以下情况引起view重绘：  </p>
+<ul>
+<li>直接手动调用invalidate方法.请求重新draw，但只会绘制调用者本身的view。</li>
+<li>调用setSelection方法。请求重新draw，但只会绘制调用者本身。</li>
+<li>调用setVisibility方法。 当View可视状态在INVISIBLE转换VISIBLE时会间接调用invalidate方法，继而绘制该View。当View的可视状态在INVISIBLE\VISIBLE转换为GONE状态时会间接调用requestLayout和invalidate方法，同时由于View树大小发生了变化，所以会请求measure过程以及layout过程，同样只绘制需要重新绘制的视图。</li>
+<li>调用setEnabled方法。请求重新draw，但不会重新绘制任何View包括该调用者本身。</li>
+<li>调用requestFocus方法。请求View树的draw，只绘制需要重绘的View。</li>
+</ul>
+<h1 id="requestLayout"><a href="#requestLayout" class="headerlink" title="requestLayout"></a>requestLayout</h1><p>本文最初提到了，除了invalidate外，常见以及常用的方法还有requestLayout。我们来看看这是怎么回事。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span><br><span class="line"> * Call this when something has changed which has invalidated the</span><br><span class="line"> * layout of this view. This will schedule a layout pass of the view</span><br><span class="line"> * tree. This should not be called while the view hierarchy is currently in a layout</span><br><span class="line"> * pass (&#123;<span class="doctag">@link</span> #isInLayout()&#125;. If layout is happening, the request may be honored at the</span><br><span class="line"> * end of the current layout pass (and then layout will run again) or after the current</span><br><span class="line"> * frame is drawn and the next layout occurs.</span><br><span class="line"> *</span><br><span class="line"> * &lt;p&gt;Subclasses which override this method should call the superclass method to</span><br><span class="line"> * handle possible request-during-layout errors correctly.&lt;/p&gt;</span><br><span class="line"> */</span></span><br><span class="line"><span class="meta">@CallSuper</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">requestLayout</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (mMeasureCache != <span class="keyword">null</span>) mMeasureCache.clear();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (mAttachInfo != <span class="keyword">null</span> &amp;&amp; mAttachInfo.mViewRequestingLayout == <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="comment">// Only trigger request-during-layout logic if this is the view requesting it,</span></span><br><span class="line">        <span class="comment">// not the views in its parent hierarchy</span></span><br><span class="line">        ViewRootImpl viewRoot = getViewRootImpl();</span><br><span class="line">        <span class="keyword">if</span> (viewRoot != <span class="keyword">null</span> &amp;&amp; viewRoot.isInLayout()) &#123;</span><br><span class="line">            <span class="keyword">if</span> (!viewRoot.requestLayoutDuringLayout(<span class="keyword">this</span>)) &#123;</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        mAttachInfo.mViewRequestingLayout = <span class="keyword">this</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    mPrivateFlags |= PFLAG_FORCE_LAYOUT;</span><br><span class="line">    mPrivateFlags |= PFLAG_INVALIDATED;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (mParent != <span class="keyword">null</span> &amp;&amp; !mParent.isLayoutRequested()) &#123;</span><br><span class="line">        mParent.requestLayout();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (mAttachInfo != <span class="keyword">null</span> &amp;&amp; mAttachInfo.mViewRequestingLayout == <span class="keyword">this</span>) &#123;</span><br><span class="line">        mAttachInfo.mViewRequestingLayout = <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>注意31-33行，是不是和invalidate的思路很像，也是一层层的回溯调用父view的requestLayout方法，直至顶级视图ViewRootImpl。<br>我们看一下ViewRootImpl的requstLayout方法：  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">requestLayout</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (!mHandlingLayoutInLayoutRequest) &#123;</span><br><span class="line">        checkThread();</span><br><span class="line">        mLayoutRequested = <span class="keyword">true</span>;</span><br><span class="line">        scheduleTraversals();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>checkThread就是检查一下目标线程是不是当前线程。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">checkThread</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (mThread != Thread.currentThread()) &#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> CalledFromWrongThreadException(</span><br><span class="line">            <span class="string">"Only the original thread that created a view hierarchy can touch its views."</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>scheduleTraversals做的事情就是和invalidate最后的过程差不多了，向viewRootImpl的</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">scheduleTraversals</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (!mTraversalScheduled) &#123;</span><br><span class="line">        mTraversalScheduled = <span class="keyword">true</span>;</span><br><span class="line">        mTraversalBarrier = mHandler.getLooper().getQueue().postSyncBarrier();</span><br><span class="line">        mChoreographer.postCallback(Choreographer.CALLBACK_TRAVERSAL, mTraversalRunnable, <span class="keyword">null</span>);</span><br><span class="line">        <span class="keyword">if</span> (!mUnbufferedInputDispatch) &#123;</span><br><span class="line">            scheduleConsumeBatchedInput();</span><br><span class="line">        &#125;</span><br><span class="line">        notifyRendererOfFramePending();</span><br><span class="line">        pokeDrawLockIfNeeded();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>最后也是走到performTraversals了。  </p>
+<p>因此这些过程和invalidate一样的。  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">performTraversals</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    ...</span><br><span class="line">    <span class="keyword">boolean</span> layoutRequested = mLayoutRequested &amp;&amp; (!mStopped || mReportNextDraw);</span><br><span class="line">    ...</span><br><span class="line">    <span class="keyword">boolean</span> insetsChanged = <span class="keyword">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (layoutRequested) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">final</span> Resources res = mView.getContext().getResources();</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (mFirst) &#123;</span><br><span class="line">            <span class="comment">// make sure touch mode code executes by setting cached value</span></span><br><span class="line">            <span class="comment">// to opposite of the added touch mode.</span></span><br><span class="line">            mAttachInfo.mInTouchMode = !mAddedTouchMode;</span><br><span class="line">            ensureTouchModeLocally(mAddedTouchMode);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (!mPendingOverscanInsets.equals(mAttachInfo.mOverscanInsets)) &#123;</span><br><span class="line">                insetsChanged = <span class="keyword">true</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> (!mPendingContentInsets.equals(mAttachInfo.mContentInsets)) &#123;</span><br><span class="line">                insetsChanged = <span class="keyword">true</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> (!mPendingStableInsets.equals(mAttachInfo.mStableInsets)) &#123;</span><br><span class="line">                insetsChanged = <span class="keyword">true</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> (!mPendingVisibleInsets.equals(mAttachInfo.mVisibleInsets)) &#123;</span><br><span class="line">                mAttachInfo.mVisibleInsets.set(mPendingVisibleInsets);</span><br><span class="line">                <span class="keyword">if</span> (DEBUG_LAYOUT) Log.v(TAG, <span class="string">"Visible insets changing to: "</span> + mAttachInfo.mVisibleInsets);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> (!mPendingOutsets.equals(mAttachInfo.mOutsets)) &#123;</span><br><span class="line">                insetsChanged = <span class="keyword">true</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> (lp.width == ViewGroup.LayoutParams.WRAP_CONTENT || lp.height == ViewGroup.LayoutParams.WRAP_CONTENT) &#123;</span><br><span class="line">                windowSizeMayChange = <span class="keyword">true</span>;</span><br><span class="line"></span><br><span class="line">                <span class="keyword">if</span> (lp.type == WindowManager.LayoutParams.TYPE_STATUS_BAR_PANEL</span><br><span class="line">                        || lp.type == WindowManager.LayoutParams.TYPE_INPUT_METHOD) &#123;</span><br><span class="line">                    <span class="comment">// NOTE -- system code, won't try to do compat mode.</span></span><br><span class="line">                    Point size = <span class="keyword">new</span> Point();</span><br><span class="line">                    mDisplay.getRealSize(size);</span><br><span class="line">                    desiredWindowWidth = size.x;</span><br><span class="line">                    desiredWindowHeight = size.y;</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    DisplayMetrics packageMetrics = res.getDisplayMetrics();</span><br><span class="line">                    desiredWindowWidth = packageMetrics.widthPixels;</span><br><span class="line">                    desiredWindowHeight = packageMetrics.heightPixels;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Ask host how big it wants to be</span></span><br><span class="line">        windowSizeMayChange |= measureHierarchy(host, lp, res, desiredWindowWidth, desiredWindowHeight);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">    <span class="keyword">boolean</span> windowShouldResize = layoutRequested &amp;&amp; windowSizeMayChange</span><br><span class="line">            &amp;&amp; ((mWidth != host.getMeasuredWidth() || mHeight != host.getMeasuredHeight())</span><br><span class="line">                || (lp.width == ViewGroup.LayoutParams.WRAP_CONTENT &amp;&amp;</span><br><span class="line">                        frame.width() &lt; desiredWindowWidth &amp;&amp; frame.width() != mWidth)</span><br><span class="line">                || (lp.height == ViewGroup.LayoutParams.WRAP_CONTENT &amp;&amp;</span><br><span class="line">                        frame.height() &lt; desiredWindowHeight &amp;&amp; frame.height() != mHeight));</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (mFirst || windowShouldResize || insetsChanged || viewVisibilityChanged || params != <span class="keyword">null</span>) &#123;</span><br><span class="line">        ...</span><br><span class="line">        performMeasure(childWidthMeasureSpec, childHeightMeasureSpec);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">boolean</span> didLayout = layoutRequested &amp;&amp; (!mStopped || mReportNextDraw);</span><br><span class="line">    <span class="keyword">if</span> (didLayout) &#123;</span><br><span class="line">        ...</span><br><span class="line">        performLayout(lp, desiredWindowWidth, desiredWindowHeight);</span><br><span class="line">        ...</span><br><span class="line">    &#125;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>可以看看上述的关键代码，由于在ViewRootImpl的requestLayout中设置了mLayoutRequested为true，在一些boolean值的计算后，所以在performTraversal中可以进入走measure和layout，但是从invalidate中进入的performTraversal不会进入measure和layout。  </p>
+<p>而且由于surface是valid，所以也不会走到performDraw。  </p>
+<h1 id="小结-1"><a href="#小结-1" class="headerlink" title="小结"></a>小结</h1><p>requestLayout方法会层层递归到父view中，直至viewRootImpl，调用measure过程和layout过程，不会调用draw过程，也不会重新绘制任何View包括该调用者本身。</p>
+
+      
+    </div>
+    
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2016/04/28/ListView-cache-index/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">你真的了解ListView的缓存吗</div>
+      <strong class="article-nav-caption">></strong>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+<div class="share_jia">
+	<!-- JiaThis Button BEGIN -->
+	<div class="jiathis_style">
+		<span class="jiathis_txt">Share to: &nbsp; </span>
+		<a class="jiathis_button_facebook"></a> 
+    <a class="jiathis_button_twitter"></a>
+    <a class="jiathis_button_plus"></a> 
+    <a class="jiathis_button_tsina"></a>
+		<a class="jiathis_button_cqq"></a>
+		<a class="jiathis_button_douban"></a>
+		<a class="jiathis_button_weixin"></a>
+		<a class="jiathis_button_tumblr"></a>
+    <a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>
+	</div>
+	<script type="text/javascript" src="http://v3.jiathis.com/code/jia.js?uid=1405949716054953" charset="utf-8"></script>
+	<!-- JiaThis Button END -->
+</div>
+
+
+
+
+
+
+<div class="duoshuo">
+	<!-- 多说评论框 start -->
+	<div class="ds-thread" data-thread-key="how-does-invalidate-and-requestLayout-work" data-title="invalidate和requestLayout流程认识" data-url="http://yoursite.com/2016/04/30/how-does-invalidate-and-requestLayout-work/"></div>
+	<!-- 多说评论框 end -->
+	<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+	<script type="text/javascript">
+	var duoshuoQuery = {short_name:"cruiseyang"};
+	(function() {
+		var ds = document.createElement('script');
+		ds.type = 'text/javascript';ds.async = true;
+		ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+		ds.charset = 'UTF-8';
+		(document.getElementsByTagName('head')[0] 
+		 || document.getElementsByTagName('body')[0]).appendChild(ds);
+	})();
+	</script>
+	<!-- 多说公共JS代码 end -->
+</div>
+
+
+
+
+</div>
+      <footer id="footer">
+  <div class="outer">
+    <div id="footer-info">
+    	<div class="footer-left">
+    		&copy; 2016 Cruise Yang
+    	</div>
+      	<div class="footer-right">
+      		<a href="http://hexo.io/" target="_blank">Hexo</a>  Theme <a href="https://github.com/litten/hexo-theme-yilia" target="_blank">Yilia</a> by Litten
+      	</div>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+
+<script>
+	var yiliaConfig = {
+		fancybox: true,
+		mathjax: true,
+		animate: true,
+		isHome: false,
+		isPost: true,
+		isArchive: false,
+		isTag: false,
+		isCategory: false,
+		open_in_new: false
+	}
+</script>
+<script src="http://7.url.cn/edu/jslib/comb/require-2.1.6,jquery-1.9.1.min.js"></script>
+<script src="/js/main.js"></script>
+
+
+
+
+
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+    tex2jax: {
+        inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+        processEscapes: true,
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+    }
+});
+
+MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+        all[i].SourceElement().parentNode.className += ' has-jax';                 
+    }       
+});
+</script>
+
+<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+  </div>
+</body>
+</html>
