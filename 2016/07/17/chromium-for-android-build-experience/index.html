@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" >
+  <title>Chromium for Android 编译过程和踩坑说明 | cruise yang</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="最近试着玩Android上的chrome，并没有开源，试试去接触Chromium，官方的文档也写的很清楚了，要做这些事情，免不了就是下载源码，进行编译，然后修改代码，进行提交。官方文档在这里： Chromium Projects.
+必备工具
+Ubuntu 14.04 64bit
+梯子
+
+踩坑纪要：  
+一开始就踩坑了，其实Google官方是推荐使用Ubuntu的，只有一处提到了说认为在这个平台有着">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Chromium for Android 编译过程和踩坑说明">
+<meta property="og:url" content="http://yoursite.com/2016/07/17/chromium-for-android-build-experience/index.html">
+<meta property="og:site_name" content="cruise yang">
+<meta property="og:description" content="最近试着玩Android上的chrome，并没有开源，试试去接触Chromium，官方的文档也写的很清楚了，要做这些事情，免不了就是下载源码，进行编译，然后修改代码，进行提交。官方文档在这里： Chromium Projects.
+必备工具
+Ubuntu 14.04 64bit
+梯子
+
+踩坑纪要：  
+一开始就踩坑了，其实Google官方是推荐使用Ubuntu的，只有一处提到了说认为在这个平台有着">
+<meta property="og:updated_time" content="2016-07-19T03:55:19.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Chromium for Android 编译过程和踩坑说明">
+<meta name="twitter:description" content="最近试着玩Android上的chrome，并没有开源，试试去接触Chromium，官方的文档也写的很清楚了，要做这些事情，免不了就是下载源码，进行编译，然后修改代码，进行提交。官方文档在这里： Chromium Projects.
+必备工具
+Ubuntu 14.04 64bit
+梯子
+
+踩坑纪要：  
+一开始就踩坑了，其实Google官方是推荐使用Ubuntu的，只有一处提到了说认为在这个平台有着">
+  
+    <link rel="alternative" href="/atom.xml" title="cruise yang" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div class="left-col">
+    <div class="overlay"></div>
+<div class="intrude-less">
+	<header id="header" class="inner">
+		<a href="/" class="profilepic">
+			
+			<img lazy-src="https://raw.githubusercontent.com/cruise1008/cruise1008.github.io/master/img/avatar.jpg" class="js-avatar">
+			
+		</a>
+
+		<hgroup>
+		  <h1 class="header-author"><a href="/">Cruise Yang</a></h1>
+		</hgroup>
+
+		
+		<p class="header-subtitle">纸上得来终觉浅，绝知此事要躬行</p>
+		
+
+		
+			<div class="switch-btn">
+				<div class="icon">
+					<div class="icon-ctn">
+						<div class="icon-wrap icon-house" data-idx="0">
+							<div class="birdhouse"></div>
+							<div class="birdhouse_holes"></div>
+						</div>
+						<div class="icon-wrap icon-ribbon hide" data-idx="1">
+							<div class="ribbon"></div>
+						</div>
+						
+						
+						<div class="icon-wrap icon-me hide" data-idx="3">
+							<div class="user"></div>
+							<div class="shoulder"></div>
+						</div>
+						
+					</div>
+					
+				</div>
+				<div class="tips-box hide">
+					<div class="tips-arrow"></div>
+					<ul class="tips-inner">
+						<li>Menu</li>
+						<li>Tags</li>
+						
+						
+						<li>Über</li>
+						
+					</ul>
+				</div>
+			</div>
+		
+
+		<div class="switch-area">
+			<div class="switch-wrap">
+				<section class="switch-part switch-part1">
+					<nav class="header-menu">
+						<ul>
+						
+							<li><a href="/">主页</a></li>
+				        
+							<li><a href="/archives">文章</a></li>
+				        
+							<li><a href="/tags/thoughts">随笔</a></li>
+				        
+							<li><a href="/about">关于</a></li>
+				        
+						</ul>
+					</nav>
+					<nav class="header-nav">
+						<div class="social">
+							
+								<a class="github" target="_blank" href="https://github.com/cruise1008" title="github">github</a>
+					        
+								<a class="weibo" target="_blank" href="http://weibo.com/cruise" title="weibo">weibo</a>
+					        
+								<a class="zhihu" target="_blank" href="https://www.zhihu.com/people/cruiseyoung" title="zhihu">zhihu</a>
+					        
+								<a class="douban" target="_blank" href="https://www.douban.com/people/cruiseyoung/" title="douban">douban</a>
+					        
+						</div>
+					</nav>
+				</section>
+				
+				
+				<section class="switch-part switch-part2">
+					<div class="widget tagcloud" id="js-tagcloud">
+						<a href="/tags/Listview/" style="font-size: 10px;">Listview</a> <a href="/tags/android/" style="font-size: 20px;">android</a> <a href="/tags/android-View/" style="font-size: 10px;">android View</a> <a href="/tags/android-view/" style="font-size: 10px;">android view</a> <a href="/tags/android-源码/" style="font-size: 10px;">android 源码</a> <a href="/tags/gc/" style="font-size: 10px;">gc</a> <a href="/tags/java/" style="font-size: 12.5px;">java</a> <a href="/tags/java-juc/" style="font-size: 17.5px;">java juc</a> <a href="/tags/java并发/" style="font-size: 15px;">java并发</a> <a href="/tags/sdk/" style="font-size: 10px;">sdk</a> <a href="/tags/thoughts/" style="font-size: 10px;">thoughts</a> <a href="/tags/view源码/" style="font-size: 10px;">view源码</a> <a href="/tags/view绘制/" style="font-size: 10px;">view绘制</a> <a href="/tags/同步/" style="font-size: 10px;">同步</a> <a href="/tags/垃圾回收/" style="font-size: 10px;">垃圾回收</a> <a href="/tags/开源/" style="font-size: 10px;">开源</a> <a href="/tags/异步/" style="font-size: 10px;">异步</a> <a href="/tags/源码/" style="font-size: 10px;">源码</a> <a href="/tags/锁/" style="font-size: 10px;">锁</a> <a href="/tags/随笔/" style="font-size: 10px;">随笔</a>
+					</div>
+				</section>
+				
+				
+				
+
+				
+				
+				<section class="switch-part switch-part3">
+				
+					<div id="js-aboutme">程序猿/足球狗/文艺工科男</div>
+				</section>
+				
+			</div>
+		</div>
+	</header>				
+</div>
+
+    </div>
+    <div class="mid-col">
+      <nav id="mobile-nav">
+  	<div class="overlay">
+  		<div class="slider-trigger"></div>
+  		<h1 class="header-author js-mobile-header hide">Cruise Yang</h1>
+  	</div>
+	<div class="intrude-less">
+		<header id="header" class="inner">
+			<div class="profilepic">
+			
+				<img lazy-src="https://raw.githubusercontent.com/cruise1008/cruise1008.github.io/master/img/avatar.jpg" class="js-avatar">
+			
+			</div>
+			<hgroup>
+			  <h1 class="header-author">Cruise Yang</h1>
+			</hgroup>
+			
+			<p class="header-subtitle">纸上得来终觉浅，绝知此事要躬行</p>
+			
+			<nav class="header-menu">
+				<ul>
+				
+					<li><a href="/">主页</a></li>
+		        
+					<li><a href="/archives">文章</a></li>
+		        
+					<li><a href="/tags/thoughts">随笔</a></li>
+		        
+					<li><a href="/about">关于</a></li>
+		        
+		        <div class="clearfix"></div>
+				</ul>
+			</nav>
+			<nav class="header-nav">
+				<div class="social">
+					
+						<a class="github" target="_blank" href="https://github.com/cruise1008" title="github">github</a>
+			        
+						<a class="weibo" target="_blank" href="http://weibo.com/cruise" title="weibo">weibo</a>
+			        
+						<a class="zhihu" target="_blank" href="https://www.zhihu.com/people/cruiseyoung" title="zhihu">zhihu</a>
+			        
+						<a class="douban" target="_blank" href="https://www.douban.com/people/cruiseyoung/" title="douban">douban</a>
+			        
+				</div>
+			</nav>
+		</header>				
+	</div>
+</nav>
+
+      <div class="body-wrap"><article id="post-chromium-for-android-build-experience" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a href="/2016/07/17/chromium-for-android-build-experience/" class="article-date">
+  	<time datetime="2016-07-17T03:08:11.000Z" itemprop="datePublished">2016-07-17</time>
+</a>
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Chromium for Android 编译过程和踩坑说明
+    </h1>
+  
+
+      </header>
+      
+      <div class="article-info article-info-post">
+        
+	<div class="article-tag tagcloud">
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/android/">android</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/开源/">开源</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/源码/">源码</a></li></ul>
+	</div>
+
+        
+
+        <div class="clearfix"></div>
+      </div>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+      <p>最近试着玩Android上的chrome，并没有开源，试试去接触Chromium，官方的文档也写的很清楚了，<br>要做这些事情，免不了就是下载源码，进行编译，然后修改代码，进行提交。<br>官方文档在这里： <a href="http://www.chromium.org/" target="_blank" rel="external">Chromium Projects</a>.</p>
+<h1 id="必备工具"><a href="#必备工具" class="headerlink" title="必备工具"></a>必备工具</h1><ul>
+<li>Ubuntu 14.04 64bit</li>
+<li>梯子</li>
+</ul>
+<p>踩坑纪要：  </p>
+<p>一开始就踩坑了，其实Google官方是推荐使用Ubuntu的，只有一处提到了说认为在这个平台有着最大的好运。但是其他地方都是使用Linux进行描述。<br>手里正好有Deepin15的系统，就装了这个进行，结果各种坑，因为从15以来deepin已经不再使用ubuntu了，而是基于debian…各种源不一样就不说了，<br>还提议编译Shadowsocks Qt for debian.。。<br>下载源码的过程都能出错，缺各种依赖，跑一些脚本也会报错，最后好不容易我装完了各种缺的文件，发现gclient sync死活成功不了。不能忍，果断换成Ubuntu14.04。  </p>
+<p>所以建议就老老实实的看完官方的所有说明，使用ubuntu吧。  </p>
+<h1 id="JDK"><a href="#JDK" class="headerlink" title="JDK"></a>JDK</h1><p>openJdk和oracle的都可以，我试了都没问题，第一次成功时使用的openjdk1.7，后来换成了oracle 也可以。这一步应该很简单，大家可以apt-get,也可以自己下载了配置环境变量。</p>
+<h1 id="下载源码"><a href="#下载源码" class="headerlink" title="下载源码"></a>下载源码</h1><p>完整过程可以参考 <a href="https://chromium.googlesource.com/chromium/src/+/master/docs/android_build_instructions.md" target="_blank" rel="external">官方说明</a>.</p>
+<h2 id="下载depot-tools"><a href="#下载depot-tools" class="headerlink" title="下载depot_tools"></a>下载depot_tools</h2><p>depot_tools是Google提供的为chromium进行代码管理的一套工具，包括gclient,gn，gyp等一系列脚本工具等，在以后和源码打交道时会一直使用到它。<br>首先是下载。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://chromium.googlesource.com/chromium/tools/depot_tools.git</span><br></pre></td></tr></table></figure>
+<p>下载后记得要配置环境变量，在.bashrc或者.bash_profile等。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">export</span> PATH = [your_depot_tools dir]/bin:<span class="variable">$PATH</span></span><br></pre></td></tr></table></figure>
+<h2 id="下载chromium源码"><a href="#下载chromium源码" class="headerlink" title="下载chromium源码"></a>下载chromium源码</h2><p>首先是创建一个目录存放源码，然后进入这个源码。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">fetch --nohooks android</span><br></pre></td></tr></table></figure>
+<p>这一过程可能需要较长时间.如果中途出了什么问题，一定要进行以下步骤：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gclient sync</span><br></pre></td></tr></table></figure>
+<p>如果到这步没有问题，那么恭喜你，源代码下载成功了。</p>
+<p>不过我是没这么幸运了，中间出了很多问题，fetch过程和sync过程都出过错，缺依赖，请走以下步骤：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./build/install-build-deps.sh</span><br></pre></td></tr></table></figure>
+<p>以及安装第三方库（src目录下）<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./build/install-build-deps-android.sh</span><br></pre></td></tr></table></figure></p>
+<p>如果还不行，请检查网络代理后再sync。~</p>
+<p>中途可能会出现某个py文件执行错误或者exit ，请不要担心，重新确认可以翻墙后再sync一次。  </p>
+<h2 id="编译源代码"><a href="#编译源代码" class="headerlink" title="编译源代码"></a>编译源代码</h2><p>官方文档解释，已经放弃GYP了，现在推荐使用GN进行配置和build。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gn args out/Default</span><br></pre></td></tr></table></figure>
+<p>这里的out/Default目录就是以后编译的apk的输出的一层，apk会存放在apks中。</p>
+<p>接着稳妥起见，可以再来一次sync.<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gclient sync</span><br></pre></td></tr></table></figure></p>
+<p>接下来准备编译环境：<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">. build/android/envsetup.sh</span><br></pre></td></tr></table></figure></p>
+<p>官方对编译提供了3种编译方案，分别是完整的浏览器，content shell（提供了浏览器基本功能的一个壳），webview。</p>
+<p>编译完整浏览器：<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ninja -C out/Default chrome_public_apk</span><br></pre></td></tr></table></figure></p>
+<p>可以在out/Default/apks中看到相应的apk.<br>编译contentshell:<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ninja -C out/Release content_shell_apk</span><br></pre></td></tr></table></figure></p>
+<p>编译webview：<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ninja -C out/Release android_webview_apk</span><br></pre></td></tr></table></figure></p>
+<p>这几步都可以得到对应的apk。</p>
+<p>可以将手机连接到电脑，然后可以push过去安装，或者直接install，当然也可以用官方文档提供的方法直接使用depot_tool进行安装。</p>
+<p>好了，到这里就完成了chromium的编译，可以修改代码进行提交了。</p>
+
+      
+    </div>
+    
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2016/04/30/how-does-invalidate-and-requestLayout-work/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">invalidate和requestLayout流程认识</div>
+      <strong class="article-nav-caption">></strong>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+<div class="share_jia">
+	<!-- JiaThis Button BEGIN -->
+	<div class="jiathis_style">
+		<span class="jiathis_txt">Share to: &nbsp; </span>
+		<a class="jiathis_button_facebook"></a> 
+    <a class="jiathis_button_twitter"></a>
+    <a class="jiathis_button_plus"></a> 
+    <a class="jiathis_button_tsina"></a>
+		<a class="jiathis_button_cqq"></a>
+		<a class="jiathis_button_douban"></a>
+		<a class="jiathis_button_weixin"></a>
+		<a class="jiathis_button_tumblr"></a>
+    <a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>
+	</div>
+	<script type="text/javascript" src="http://v3.jiathis.com/code/jia.js?uid=1405949716054953" charset="utf-8"></script>
+	<!-- JiaThis Button END -->
+</div>
+
+
+
+
+
+
+<div class="duoshuo">
+	<!-- 多说评论框 start -->
+	<div class="ds-thread" data-thread-key="chromium-for-android-build-experience" data-title="Chromium for Android 编译过程和踩坑说明" data-url="http://yoursite.com/2016/07/17/chromium-for-android-build-experience/"></div>
+	<!-- 多说评论框 end -->
+	<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+	<script type="text/javascript">
+	var duoshuoQuery = {short_name:"cruiseyang"};
+	(function() {
+		var ds = document.createElement('script');
+		ds.type = 'text/javascript';ds.async = true;
+		ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+		ds.charset = 'UTF-8';
+		(document.getElementsByTagName('head')[0] 
+		 || document.getElementsByTagName('body')[0]).appendChild(ds);
+	})();
+	</script>
+	<!-- 多说公共JS代码 end -->
+</div>
+
+
+
+
+</div>
+      <footer id="footer">
+  <div class="outer">
+    <div id="footer-info">
+    	<div class="footer-left">
+    		&copy; 2016 Cruise Yang
+    	</div>
+      	<div class="footer-right">
+      		<a href="http://hexo.io/" target="_blank">Hexo</a>  Theme <a href="https://github.com/litten/hexo-theme-yilia" target="_blank">Yilia</a> by Litten
+      	</div>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+
+<script>
+	var yiliaConfig = {
+		fancybox: true,
+		mathjax: true,
+		animate: true,
+		isHome: false,
+		isPost: true,
+		isArchive: false,
+		isTag: false,
+		isCategory: false,
+		open_in_new: true
+	}
+</script>
+<script src="http://7.url.cn/edu/jslib/comb/require-2.1.6,jquery-1.9.1.min.js"></script>
+<script src="/js/main.js"></script>
+
+
+
+
+
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+    tex2jax: {
+        inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+        processEscapes: true,
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+    }
+});
+
+MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+        all[i].SourceElement().parentNode.className += ' has-jax';                 
+    }       
+});
+</script>
+
+<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+  </div>
+</body>
+</html>

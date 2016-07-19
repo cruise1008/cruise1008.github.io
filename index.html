@@ -113,7 +113,7 @@
 				
 				<section class="switch-part switch-part2">
 					<div class="widget tagcloud" id="js-tagcloud">
-						<a href="/tags/Listview/" style="font-size: 10px;">Listview</a> <a href="/tags/android/" style="font-size: 20px;">android</a> <a href="/tags/android-View/" style="font-size: 10px;">android View</a> <a href="/tags/android-view/" style="font-size: 10px;">android view</a> <a href="/tags/android-源码/" style="font-size: 10px;">android 源码</a> <a href="/tags/gc/" style="font-size: 10px;">gc</a> <a href="/tags/java/" style="font-size: 12.5px;">java</a> <a href="/tags/java-juc/" style="font-size: 17.5px;">java juc</a> <a href="/tags/java并发/" style="font-size: 15px;">java并发</a> <a href="/tags/sdk/" style="font-size: 10px;">sdk</a> <a href="/tags/thoughts/" style="font-size: 10px;">thoughts</a> <a href="/tags/view源码/" style="font-size: 10px;">view源码</a> <a href="/tags/view绘制/" style="font-size: 10px;">view绘制</a> <a href="/tags/同步/" style="font-size: 10px;">同步</a> <a href="/tags/垃圾回收/" style="font-size: 10px;">垃圾回收</a> <a href="/tags/异步/" style="font-size: 10px;">异步</a> <a href="/tags/锁/" style="font-size: 10px;">锁</a> <a href="/tags/随笔/" style="font-size: 10px;">随笔</a>
+						<a href="/tags/Listview/" style="font-size: 10px;">Listview</a> <a href="/tags/android/" style="font-size: 20px;">android</a> <a href="/tags/android-View/" style="font-size: 10px;">android View</a> <a href="/tags/android-view/" style="font-size: 10px;">android view</a> <a href="/tags/android-源码/" style="font-size: 10px;">android 源码</a> <a href="/tags/gc/" style="font-size: 10px;">gc</a> <a href="/tags/java/" style="font-size: 12.5px;">java</a> <a href="/tags/java-juc/" style="font-size: 17.5px;">java juc</a> <a href="/tags/java并发/" style="font-size: 15px;">java并发</a> <a href="/tags/sdk/" style="font-size: 10px;">sdk</a> <a href="/tags/thoughts/" style="font-size: 10px;">thoughts</a> <a href="/tags/view源码/" style="font-size: 10px;">view源码</a> <a href="/tags/view绘制/" style="font-size: 10px;">view绘制</a> <a href="/tags/同步/" style="font-size: 10px;">同步</a> <a href="/tags/垃圾回收/" style="font-size: 10px;">垃圾回收</a> <a href="/tags/开源/" style="font-size: 10px;">开源</a> <a href="/tags/异步/" style="font-size: 10px;">异步</a> <a href="/tags/源码/" style="font-size: 10px;">源码</a> <a href="/tags/锁/" style="font-size: 10px;">锁</a> <a href="/tags/随笔/" style="font-size: 10px;">随笔</a>
 					</div>
 				</section>
 				
@@ -184,6 +184,98 @@
 </nav>
 
       <div class="body-wrap">
+  
+    <article id="post-chromium-for-android-build-experience" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a href="/2016/07/17/chromium-for-android-build-experience/" class="article-date">
+  	<time datetime="2016-07-17T03:08:11.000Z" itemprop="datePublished">2016-07-17</time>
+</a>
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/07/17/chromium-for-android-build-experience/">Chromium for Android 编译过程和踩坑说明</a>
+    </h1>
+  
+
+      </header>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+      <p>最近试着玩Android上的chrome，并没有开源，试试去接触Chromium，官方的文档也写的很清楚了，<br>要做这些事情，免不了就是下载源码，进行编译，然后修改代码，进行提交。<br>官方文档在这里： <a href="http://www.chromium.org/" target="_blank" rel="external">Chromium Projects</a>.</p>
+<h1 id="必备工具"><a href="#必备工具" class="headerlink" title="必备工具"></a>必备工具</h1><ul>
+<li>Ubuntu 14.04 64bit</li>
+<li>梯子</li>
+</ul>
+<p>踩坑纪要：  </p>
+<p>一开始就踩坑了，其实Google官方是推荐使用Ubuntu的，只有一处提到了说认为在这个平台有着最大的好运。但是其他地方都是使用Linux进行描述。<br>手里正好有Deepin15的系统，就装了这个进行，结果各种坑，因为从15以来deepin已经不再使用ubuntu了，而是基于debian…各种源不一样就不说了，<br>还提议编译Shadowsocks Qt for debian.。。<br>下载源码的过程都能出错，缺各种依赖，跑一些脚本也会报错，最后好不容易我装完了各种缺的文件，发现gclient sync死活成功不了。不能忍，果断换成Ubuntu14.04。  </p>
+<p>所以建议就老老实实的看完官方的所有说明，使用ubuntu吧。  </p>
+<h1 id="JDK"><a href="#JDK" class="headerlink" title="JDK"></a>JDK</h1><p>openJdk和oracle的都可以，我试了都没问题，第一次成功时使用的openjdk1.7，后来换成了oracle 也可以。这一步应该很简单，大家可以apt-get,也可以自己下载了配置环境变量。</p>
+<h1 id="下载源码"><a href="#下载源码" class="headerlink" title="下载源码"></a>下载源码</h1><p>完整过程可以参考 <a href="https://chromium.googlesource.com/chromium/src/+/master/docs/android_build_instructions.md" target="_blank" rel="external">官方说明</a>.</p>
+<h2 id="下载depot-tools"><a href="#下载depot-tools" class="headerlink" title="下载depot_tools"></a>下载depot_tools</h2><p>depot_tools是Google提供的为chromium进行代码管理的一套工具，包括gclient,gn，gyp等一系列脚本工具等，在以后和源码打交道时会一直使用到它。<br>首先是下载。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://chromium.googlesource.com/chromium/tools/depot_tools.git</span><br></pre></td></tr></table></figure>
+<p>下载后记得要配置环境变量，在.bashrc或者.bash_profile等。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">export</span> PATH = [your_depot_tools dir]/bin:<span class="variable">$PATH</span></span><br></pre></td></tr></table></figure>
+<h2 id="下载chromium源码"><a href="#下载chromium源码" class="headerlink" title="下载chromium源码"></a>下载chromium源码</h2><p>首先是创建一个目录存放源码，然后进入这个源码。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">fetch --nohooks android</span><br></pre></td></tr></table></figure>
+<p>这一过程可能需要较长时间.如果中途出了什么问题，一定要进行以下步骤：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gclient sync</span><br></pre></td></tr></table></figure>
+<p>如果到这步没有问题，那么恭喜你，源代码下载成功了。</p>
+<p>不过我是没这么幸运了，中间出了很多问题，fetch过程和sync过程都出过错，缺依赖，请走以下步骤：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./build/install-build-deps.sh</span><br></pre></td></tr></table></figure>
+<p>以及安装第三方库（src目录下）<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./build/install-build-deps-android.sh</span><br></pre></td></tr></table></figure></p>
+<p>如果还不行，请检查网络代理后再sync。~</p>
+<p>中途可能会出现某个py文件执行错误或者exit ，请不要担心，重新确认可以翻墙后再sync一次。  </p>
+<h2 id="编译源代码"><a href="#编译源代码" class="headerlink" title="编译源代码"></a>编译源代码</h2><p>官方文档解释，已经放弃GYP了，现在推荐使用GN进行配置和build。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gn args out/Default</span><br></pre></td></tr></table></figure>
+<p>这里的out/Default目录就是以后编译的apk的输出的一层，apk会存放在apks中。</p>
+<p>接着稳妥起见，可以再来一次sync.<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gclient sync</span><br></pre></td></tr></table></figure></p>
+<p>接下来准备编译环境：<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">. build/android/envsetup.sh</span><br></pre></td></tr></table></figure></p>
+<p>官方对编译提供了3种编译方案，分别是完整的浏览器，content shell（提供了浏览器基本功能的一个壳），webview。</p>
+<p>编译完整浏览器：<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ninja -C out/Default chrome_public_apk</span><br></pre></td></tr></table></figure></p>
+<p>可以在out/Default/apks中看到相应的apk.<br>编译contentshell:<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ninja -C out/Release content_shell_apk</span><br></pre></td></tr></table></figure></p>
+<p>编译webview：<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ninja -C out/Release android_webview_apk</span><br></pre></td></tr></table></figure></p>
+<p>这几步都可以得到对应的apk。</p>
+<p>可以将手机连接到电脑，然后可以push过去安装，或者直接install，当然也可以用官方文档提供的方法直接使用depot_tool进行安装。</p>
+<p>好了，到这里就完成了chromium的编译，可以修改代码进行提交了。</p>
+
+      
+    </div>
+    
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/android/">android</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/开源/">开源</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/源码/">源码</a></li></ul>
+	</div>
+
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+    
+  </div>
+  
+</article>
+
+
+
+
+
+
+
+
+
   
     <article id="post-how-does-invalidate-and-requestLayout-work" class="article article-type-post" itemscope itemprop="blogPost">
   
@@ -1199,61 +1291,6 @@
 		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/android/">android</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/gc/">gc</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/垃圾回收/">垃圾回收</a></li></ul>
 	</div>
 
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-    
-  </div>
-  
-</article>
-
-
-
-
-
-
-
-
-
-  
-    <article id="post-index" class="article article-type-post" itemscope itemprop="blogPost">
-  
-    <div class="article-meta">
-      <a href="/2016/03/29/index/" class="article-date">
-  	<time datetime="2016-03-29T12:02:21.000Z" itemprop="datePublished">2016-03-29</time>
-</a>
-    </div>
-  
-  <div class="article-inner">
-    
-      <input type="hidden" class="isFancy" />
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/03/29/index/">about</a>
-    </h1>
-  
-
-      </header>
-      
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-      <h1 id="关于我"><a href="#关于我" class="headerlink" title="关于我"></a>关于我</h1><p>朋友叫我养胖胖，90后<br>本科就读于华中科技大学，cs专业<br>现在浙江大学cs硕士研究生在读<br>酷爱并专攻Android开发</p>
-<h5 id="文艺男-足球狗-程序猿"><a href="#文艺男-足球狗-程序猿" class="headerlink" title="文艺男/足球狗/程序猿"></a>文艺男/足球狗/程序猿</h5><p>思绪有时候就像流沙容易溜走，本该早早搭建的博客也拖到了现在，好在不晚，不晚。<br>目前找实习中，加油。</p>
-<p>gmail: cruise1008@gmail.com</p>
-
-      
-    </div>
-    
-    <div class="article-info article-info-index">
-      
-      
       
 
       
