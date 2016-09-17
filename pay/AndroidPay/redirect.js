@@ -1,4 +1,4 @@
-if ((window.location.host === 'rsolomakhin.github.io') &&
+if ((window.location.host === 'cruise1008.github.io') &&
     (window.location.protocol !== 'https:')) {
   window.location.protocol = 'https:';
 }
