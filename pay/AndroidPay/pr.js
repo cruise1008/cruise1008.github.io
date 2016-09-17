@@ -28,7 +28,7 @@ function onBuyClicked() {  // eslint-disable-line no-unused-vars
   ];
 
   var details = {
-    total: {label: 'Donation', amount: {currency: 'RMB', value: '0.01'}},
+    total: {label: 'Donation', amount: {currency: 'RMB', value: '100'}},
     displayItems: [
       {
         label: 'Original donation amount',
