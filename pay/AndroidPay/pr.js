@@ -36,7 +36,7 @@ function onBuyClicked() {  // eslint-disable-line no-unused-vars
       },
       {
         label: 'Friends and family discount',
-        amount: {currency: 'USD', value: '-64.99'}
+        amount: {currency: 'USD', value: '-10.00'}
       }
     ]
   };
