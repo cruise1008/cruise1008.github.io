@@ -13,6 +13,7 @@ function onBuyClicked() {  // eslint-disable-line no-unused-vars
       supportedMethods: ['https://raw.githubusercontent.com/cruise1008/cruise1008.github.io/master/pay'],
       data: {
         // Browser does not parse this data and passes it directly to AliPay app.
+        appId: '2016072701673790',
         partner: '2088311594324396',
         seller: 'rebaccoyu@163.com',
         _input_charset: 'UTF-8',
