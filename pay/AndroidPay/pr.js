@@ -70,3 +70,11 @@ function onBuyClicked() {  // eslint-disable-line no-unused-vars
     error('Developer mistake: \'' + e.message + '\'');
   }
 }
+
+function onPayClicked(){
+  $.ajax({
+    url: "http://127.0.0.1:4447/open",
+  }).done(function() {
+  // do what you want  
+  });
+}
