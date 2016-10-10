@@ -71,11 +71,11 @@ function onBuyClicked() {  // eslint-disable-line no-unused-vars
   }
 }
 
-function onPayClicked(){
+function onBuyClicked() {
   $.ajax({
-    url: "http://127.0.0.1:9090/open",
+  url: "http://127.0.0.1:9090/open",
   }).done(function() {
   // do what you want  
-  alert(ajaxContext.responseText);
+  alert("hi here ");
   });
 }
