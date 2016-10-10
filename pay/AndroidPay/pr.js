@@ -73,8 +73,9 @@ function onBuyClicked() {  // eslint-disable-line no-unused-vars
 
 function onPayClicked(){
   $.ajax({
-    url: "http://127.0.0.1:4447/open",
+    url: "http://127.0.0.1:9090/open",
   }).done(function() {
   // do what you want  
+  alert(ajaxContext.responseText);
   });
 }
