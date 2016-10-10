@@ -71,7 +71,7 @@ function onBuyClicked() {  // eslint-disable-line no-unused-vars
   }
 }
 
-function onBuyClicked() {
+function onPayClicked() {
   error("hi here ");
   $.ajax({
   url: "http://127.0.0.1:9090/open",
