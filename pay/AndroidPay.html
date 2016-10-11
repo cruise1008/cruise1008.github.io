@@ -18,6 +18,24 @@
 
   </div>
   <pre id="msg"></pre>
+  <script type="text/javascript">var url = {
+    open: 'http://www.alipay.com/platformapi/startApp',
+    down: 'http://www.alipay.com/platformapi/startApp'
+  };
+  var iframe = document.createElement('iframe');
+  var body = document.body;
+  iframe.style.cssText='display:none;width=0;height=0';
+  var timer = null;
+ 
+  // 立即打开的按钮
+  var openapp = document.getElementById('openapp');
+  openapp.addEventListener('click', function() {
+      body.appendChild(iframe);
+      iframe.src = url.open;
+      timer = setTimeout(function() {
+        wondow.location.href = url.down;
+      }, 500);
+  }, false)</script>
   <script src="./AndroidPay/util.js"></script>
   <script src="./AndroidPay/pr.js"></script>
   <script src="./AndroidPay/redirect.js"></script>
