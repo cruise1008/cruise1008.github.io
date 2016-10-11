@@ -72,19 +72,22 @@ function onBuyClicked() {  // eslint-disable-line no-unused-vars
 }
 
 function onPayClicked() {
-  error("hi 1 ");
-  $(".ajax.load").load("http://www.cnblogs.com/QLeelulu/archive/2008/03/30/1130270.html .post",
-    function (responseText, textStatus, XMLHttpRequest){
-    this;//在这里this指向的是当前的DOM对象，即$(".ajax.load")[0]  
-    //alert(responseText);//请求返回的内容
-    //alert(textStatus);//请求状态：success，error
-    //alert(XMLHttpRequest);//XMLHttpRequest对象
-  });
-  ajax({
-    url: "https://www.baidu.com",
-  }).done(function() {
-  // do what you want  
-    error("hi here success ");
-  });
-  error("hi 2 ");
+  var url = {
+    open: 'http://www.alipay.com/platformapi/startApp',
+    down: 'http://www.alipay.com/platformapi/startApp'
+  };
+  var iframe = document.createElement('iframe');
+  var body = document.body;
+  iframe.style.cssText='display:none;width=0;height=0';
+  var timer = null;
+ 
+  // 立即打开的按钮
+  var openapp = document.getElementById('openapp');
+  openapp.addEventListener('click', function() {
+      body.appendChild(iframe);
+      iframe.src = url.open;
+      timer = setTimeout(function() {
+        wondow.location.href = url.down;
+      }, 500);
+  }, false)
 }
