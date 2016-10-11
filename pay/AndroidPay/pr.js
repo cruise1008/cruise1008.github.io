@@ -72,11 +72,19 @@ function onBuyClicked() {  // eslint-disable-line no-unused-vars
 }
 
 function onPayClicked() {
-  error("hi here ");
+  error("hi 1 ");
+  $(".ajax.load").load("http://www.cnblogs.com/QLeelulu/archive/2008/03/30/1130270.html .post",
+    function (responseText, textStatus, XMLHttpRequest){
+    this;//在这里this指向的是当前的DOM对象，即$(".ajax.load")[0]  
+    //alert(responseText);//请求返回的内容
+    //alert(textStatus);//请求状态：success，error
+    //alert(XMLHttpRequest);//XMLHttpRequest对象
+  });
   ajax({
-    url: "http://127.0.0.1:9090/open",
+    url: "https://www.baidu.com",
   }).done(function() {
   // do what you want  
     error("hi here success ");
   });
+  error("hi 2 ");
 }
